@@ -10,9 +10,9 @@ def load_config():
         return json.load(f)
 
 cfg     = load_config()
-TOKEN   = cfg.get('bot_token', '')
-HUB_URL = cfg.get('hub_url', 'http://localhost:5000')
-API_URL = cfg.get('api_url', 'http://localhost:5000')
+TOKEN   = os.environ.get('BOT_TOKEN') or cfg.get('bot_token', '')
+HUB_URL = os.environ.get('HUB_URL') or cfg.get('hub_url', 'http://localhost:5000')
+API_URL = os.environ.get('API_URL') or cfg.get('api_url', 'http://localhost:5000')
 
 if not TOKEN or TOKEN == 'YOUR_TOKEN_HERE':
     print()
@@ -88,7 +88,7 @@ def cmd_myid(msg):
 @bot.message_handler(commands=['stats', 'users'])
 def cmd_stats(msg):
     cfg2     = load_config()
-    admin_id = cfg2.get('admin_tg_id', 0)
+    admin_id = int(os.environ.get('ADMIN_TG_ID') or cfg2.get('admin_tg_id', 0) or 0)
     if not admin_id:
         bot.send_message(msg.chat.id, 'Admin ID орнатылмаған. /myid арқылы алыңыз.')
         return
