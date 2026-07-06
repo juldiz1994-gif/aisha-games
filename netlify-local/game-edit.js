@@ -176,7 +176,7 @@
       <button id="ge-save-btn" onclick="__geSave()">✅ Аяқтау → Сілтеме алу</button>
       <div id="ge-link-box">
         <div class="lbl">✅ Сілтемеңіз дайын!</div>
-        <div class="uses-badge">🎯 3 рет тегін пайдалануға болады</div>
+        <div class="uses-badge">🎯 3 рет тегін ойынымызды жасауға болады</div>
         <div id="ge-link-text"></div>
         <button id="ge-copy-btn" onclick="__geCopy()">📋 Көшіру</button>
       </div>
