@@ -105,6 +105,15 @@ def get_admin_email():
     cfg = load_config()
     return os.environ.get('ADMIN_EMAIL') or cfg.get('admin_email', '')
 
+def is_admin(teacher):
+    if not teacher:
+        return False
+    cfg = load_config()
+    admin_email = os.environ.get('ADMIN_EMAIL') or cfg.get('admin_email', '')
+    admin_tg    = str(os.environ.get('ADMIN_TG_ID') or cfg.get('admin_tg_id', '') or '')
+    tg_id       = str(teacher.get('telegram_id') or '')
+    return (teacher['email'] == admin_email) or (admin_tg and tg_id and tg_id == admin_tg)
+
 def notify_admin(teacher_email, screenshot_b64):
     cfg = load_config()
     bot_token = os.environ.get('BOT_TOKEN') or cfg.get('bot_token', '')
@@ -241,7 +250,7 @@ def api_me():
     return jsonify({
         'email':            teacher['email'],
         'display_name':     display,
-        'is_admin':         teacher['email'] == get_admin_email(),
+        'is_admin':         is_admin(teacher),
         'subscription_end': teacher.get('subscription_end', 0) or 0,
         'free_games_used':  teacher.get('free_games_used', 0) or 0,
         'has_sub':          (teacher.get('subscription_end', 0) or 0) > now,
@@ -250,31 +259,6 @@ def api_me():
 # ── Games ─────────────────────────────────────────────────
 @app.route('/api/save-game', methods=['POST'])
 def api_save_game():
-    token   = request.headers.get('X-Token', '')
-    teacher = get_teacher_by_token(token)
-    if not teacher:
-        return jsonify({'error': 'Авторизация қажет'}), 401
-
-    now = int(time.time())
-    sub_end = teacher.get('subscription_end', 0) or 0
-    has_sub = sub_end > now
-
-    if not has_sub:
-        # Check free tier limit per telegram_id
-        tg_id = teacher.get('telegram_id')
-        if tg_id:
-            with engine.connect() as c:
-                row = c.execute(
-                    text('SELECT COALESCE(SUM(free_games_used),0) AS total FROM teachers WHERE telegram_id=:tg'),
-                    {'tg': tg_id}
-                ).fetchone()
-            total_free = row_dict(row)['total'] if row else 0
-        else:
-            total_free = teacher.get('free_games_used', 0) or 0
-
-        if total_free >= 3:
-            return jsonify({'error': 'subscription_required', 'free_used': 3}), 402
-
     data      = request.get_json() or {}
     game_type = data.get('type', 'unknown')
     config    = data.get('config', {})
@@ -284,14 +268,9 @@ def api_save_game():
     with engine.begin() as c:
         c.execute(
             text('INSERT INTO game_configs (id, teacher_id, game_type, config_json, title) VALUES (:id,:tid,:gt,:cfg,:title)'),
-            {'id': game_id, 'tid': teacher['id'], 'gt': game_type,
+            {'id': game_id, 'tid': 'guest', 'gt': game_type,
              'cfg': json.dumps(config, ensure_ascii=False), 'title': title}
         )
-        if not has_sub:
-            c.execute(
-                text('UPDATE teachers SET free_games_used = COALESCE(free_games_used,0) + 1 WHERE id=:id'),
-                {'id': teacher['id']}
-            )
 
     return jsonify({'success': True, 'id': game_id})
 

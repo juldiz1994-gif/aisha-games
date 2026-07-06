@@ -6,7 +6,6 @@
   'use strict';
 
   const API = location.origin;
-  const token = localStorage.getItem('teacher_token');
   const params = new URLSearchParams(location.search);
   const PLAY_ID = params.get('play');
   const EDIT_MODE = params.get('edit') === '1';
@@ -20,7 +19,7 @@
     return;
   }
 
-  if(!token || !EDIT_MODE) return;
+  if(!EDIT_MODE) return;
 
   /* ── Styles ── */
   const style = document.createElement('style');
@@ -902,7 +901,7 @@
       if(window.setGameConfig) window.setGameConfig(config);
       const r = await fetch(`${API}/api/save-game`,{
         method:'POST',
-        headers:{'Content-Type':'application/json','X-Token':token},
+        headers:{'Content-Type':'application/json'},
         body:JSON.stringify({type:window.GAME_TYPE||'unknown', title:window.GAME_TITLE||'Сабақ', config})
       });
       const d = await r.json();
