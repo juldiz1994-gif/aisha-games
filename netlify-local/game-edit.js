@@ -890,181 +890,6 @@
     closePanel();
   };
 
-  /* ── Payment modal ── */
-  function injectPaymentStyles(){
-    if(document.getElementById('ge-pay-style')) return;
-    const s = document.createElement('style');
-    s.id = 'ge-pay-style';
-    s.textContent = `
-      #ge-pay-overlay{
-        position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99999;
-        display:flex;align-items:center;justify-content:center;
-        backdrop-filter:blur(6px);
-      }
-      #ge-pay-box{
-        width:min(460px,92vw);
-        background:#0e1020;
-        border:1px solid rgba(255,200,100,0.25);
-        border-radius:20px;padding:32px 28px;
-        box-shadow:0 20px 80px rgba(0,0,0,0.7);
-        font-family:'Segoe UI',system-ui,sans-serif;
-        color:#fff;
-      }
-      #ge-pay-box h3{
-        font-size:1.15rem;font-weight:800;color:#ffd700;
-        text-align:center;margin-bottom:6px;
-      }
-      #ge-pay-box .sub{
-        text-align:center;font-size:0.78rem;
-        color:rgba(255,255,255,0.4);margin-bottom:22px;
-      }
-      .pay-step{
-        background:rgba(255,255,255,0.04);
-        border:1px solid rgba(255,255,255,0.08);
-        border-radius:12px;padding:14px 16px;
-        margin-bottom:10px;font-size:0.86rem;
-        line-height:1.6;
-      }
-      .pay-step b{color:#ffd700;}
-      .pay-step .phone{
-        font-size:1.4rem;font-weight:900;color:#4ade80;
-        letter-spacing:0.06em;display:block;margin:4px 0;
-      }
-      .pay-step .warn{
-        font-size:0.74rem;color:#fb923c;margin-top:4px;display:block;
-      }
-      #ge-pay-upload{
-        width:100%;background:rgba(100,150,255,0.08);
-        border:1px dashed rgba(100,150,255,0.4);
-        border-radius:10px;padding:14px;
-        color:rgba(150,180,255,0.8);cursor:pointer;
-        font-size:0.84rem;text-align:center;
-        margin:12px 0 10px;display:block;
-      }
-      #ge-pay-img{
-        width:100%;border-radius:8px;margin-bottom:10px;
-        display:none;max-height:200px;object-fit:contain;
-        border:1px solid rgba(255,255,255,0.1);
-      }
-      #ge-pay-submit{
-        width:100%;background:linear-gradient(135deg,#16a34a,#22c55e);
-        border:none;color:#fff;padding:13px;border-radius:10px;
-        font-weight:800;font-size:0.95rem;cursor:pointer;
-        transition:opacity 0.2s;margin-bottom:8px;
-      }
-      #ge-pay-submit:hover{opacity:0.88;}
-      #ge-pay-submit:disabled{opacity:0.45;cursor:not-allowed;}
-      #ge-pay-cancel{
-        width:100%;background:none;border:none;
-        color:rgba(255,255,255,0.35);cursor:pointer;
-        font-size:0.8rem;padding:6px;
-      }
-      #ge-pay-cancel:hover{color:rgba(255,255,255,0.65);}
-      #ge-pay-msg{
-        text-align:center;font-size:0.8rem;
-        color:#4ade80;min-height:18px;margin-bottom:6px;
-      }
-    `;
-    document.head.appendChild(s);
-  }
-
-  let _payScreenshot = '';
-
-  window.__geShowPayment = function(){
-    injectPaymentStyles();
-    if(document.getElementById('ge-pay-overlay')) return;
-    _payScreenshot = '';
-    const ov = document.createElement('div');
-    ov.id = 'ge-pay-overlay';
-    ov.innerHTML = `
-      <div id="ge-pay-box">
-        <h3>💳 Жазылым рәсімдеу</h3>
-        <div class="sub">3 тегін ойын бітті · Айлық: 4 990 тг</div>
-        <div class="pay-step">
-          <b>1. Каспи арқылы аударыңыз:</b>
-          <span class="phone">+7 771 510 4948</span>
-          <span class="warn">⚠️ Аударардан бұрын иесін тексеріңіз: <b style="color:#ffd700">Сахибжамал А.</b></span>
-          <span style="font-size:0.78rem;color:rgba(255,255,255,0.5);display:block;margin-top:4px">Сома: 4 990 тг · Мерзім: 30 күн</span>
-        </div>
-        <div class="pay-step">
-          <b>2. Чек скриншотын жіберіңіз:</b>
-        </div>
-        <label id="ge-pay-upload">
-          📸 Чек суретін таңдаңыз
-          <input type="file" accept="image/*" style="display:none" id="ge-pay-file">
-        </label>
-        <img id="ge-pay-img" alt="Чек">
-        <div id="ge-pay-msg"></div>
-        <button id="ge-pay-submit" disabled onclick="__geSubmitPayment()">📨 Жіберу</button>
-        <button id="ge-pay-cancel" onclick="__geClosePayment()">Кейінірек</button>
-      </div>`;
-    document.body.appendChild(ov);
-    document.getElementById('ge-pay-file').addEventListener('change', function(){
-      const file = this.files[0];
-      if(!file) return;
-      resizePayPhoto(file, b64=>{
-        _payScreenshot = b64;
-        const img = document.getElementById('ge-pay-img');
-        img.src = b64; img.style.display = 'block';
-        document.getElementById('ge-pay-submit').disabled = false;
-        document.getElementById('ge-pay-msg').textContent = '';
-      });
-    });
-  };
-
-  window.__geClosePayment = function(){
-    const ov = document.getElementById('ge-pay-overlay');
-    if(ov) ov.remove();
-  };
-
-  window.__geSubmitPayment = async function(){
-    const btn = document.getElementById('ge-pay-submit');
-    const msg = document.getElementById('ge-pay-msg');
-    if(!_payScreenshot){ msg.textContent = 'Суретті таңдаңыз'; return; }
-    btn.disabled = true; btn.textContent = '⏳ Жіберілуде...';
-    msg.textContent = '';
-    try{
-      const r = await fetch(`${API}/api/payment/submit`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json','X-Token':token},
-        body:JSON.stringify({screenshot:_payScreenshot})
-      });
-      const d = await r.json();
-      if(d.success){
-        msg.textContent = '✅ Чегіңіз жіберілді! Растауды күтіңіз.';
-        btn.textContent = '✅ Жіберілді';
-        setTimeout(()=>window.__geClosePayment(), 3000);
-      } else {
-        msg.style.color = '#f87171';
-        msg.textContent = d.error || 'Қате болды';
-        btn.disabled = false; btn.textContent = '📨 Жіберу';
-      }
-    } catch(e){
-      msg.style.color = '#f87171';
-      msg.textContent = 'Сервермен байланыс жоқ';
-      btn.disabled = false; btn.textContent = '📨 Жіберу';
-    }
-  };
-
-  function resizePayPhoto(file, cb){
-    const reader = new FileReader();
-    reader.onload = e=>{
-      const img = new Image();
-      img.onload = ()=>{
-        const MAX = 800;
-        let w = img.width, h = img.height;
-        if(w > MAX){ h = Math.round(h*MAX/w); w = MAX; }
-        if(h > MAX){ w = Math.round(w*MAX/h); h = MAX; }
-        const c = document.createElement('canvas');
-        c.width = w; c.height = h;
-        c.getContext('2d').drawImage(img,0,0,w,h);
-        cb(c.toDataURL('image/jpeg', 0.75));
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  }
-
   /* ── Save & get link ── */
   window.__geSave = async function(){
     const btn = document.getElementById('ge-save-btn');
@@ -1080,13 +905,6 @@
         headers:{'Content-Type':'application/json','X-Token':token},
         body:JSON.stringify({type:window.GAME_TYPE||'unknown', title:window.GAME_TITLE||'Сабақ', config})
       });
-      if(r.status === 402){
-        btn.disabled = false;
-        btn.textContent = '✅ Аяқтау → Сілтеме алу';
-        status.textContent = '';
-        window.__geShowPayment();
-        return;
-      }
       const d = await r.json();
       if(d.id){
         const link = `${location.origin}/play/${d.id}`;
@@ -1097,7 +915,7 @@
         status.textContent = d.error||'Қате болды';
       }
     } catch(e){
-      status.textContent = 'Сервермен байланыс жоқ';
+      status.textContent = 'Сервермен байланыс жоқ (localhost:5000)';
     }
     btn.disabled = false;
     btn.textContent = '✅ Аяқтау → Сілтеме алу';

@@ -147,6 +147,33 @@ html,body{
 }
 .card-ig:hover{border-color:rgba(200,100,255,0.5)!important;}
 
+/* ── Login overlay ── */
+#login-overlay{
+  position:fixed;inset:0;
+  background:rgba(4,5,16,0.96);
+  z-index:999;
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(8px);
+}
+#login-box{
+  width:min(420px,90vw);
+  background:#0e1020;
+  border:1px solid rgba(255,200,100,0.2);
+  border-radius:20px;
+  padding:40px 36px;
+  box-shadow:0 20px 80px rgba(0,0,0,0.6);
+}
+#login-box h2{
+  font-size:1.4rem;font-weight:800;
+  color:#ffd700;text-align:center;
+  margin-bottom:6px;letter-spacing:0.08em;
+}
+#login-box .sub{
+  text-align:center;font-size:0.78rem;
+  color:rgba(255,255,255,0.4);
+  margin-bottom:28px;letter-spacing:0.1em;
+  text-transform:uppercase;
+}
 .inp{
   width:100%;
   background:rgba(255,255,255,0.05);
@@ -159,6 +186,32 @@ html,body{
 }
 .inp:focus{border-color:rgba(255,200,100,0.5);}
 .inp::placeholder{color:rgba(255,255,255,0.25);}
+#login-btn{
+  width:100%;
+  background:linear-gradient(135deg,#d97706,#f59e0b);
+  border:none;color:#000;
+  padding:14px;border-radius:10px;
+  font-weight:800;font-size:0.95rem;
+  cursor:pointer;letter-spacing:0.05em;
+  transition:opacity 0.2s;margin-top:4px;
+}
+#login-btn:hover{opacity:0.88;}
+#login-err{
+  color:#f87171;font-size:0.78rem;
+  text-align:center;margin-top:10px;
+  min-height:18px;
+}
+#login-tg{
+  text-align:center;
+  margin-top:20px;
+  padding-top:18px;
+  border-top:1px solid rgba(255,255,255,0.07);
+  font-size:0.75rem;
+  color:rgba(255,255,255,0.35);
+  line-height:1.7;
+}
+#login-tg span{color:#38bdf8;}
+#login-tg a{color:#38bdf8;text-decoration:none;}
 
 /* ── Admin panel ── */
 #admin-panel{
@@ -195,65 +248,6 @@ html,body{
   padding:4px 10px;
   font-size:0.72rem;color:rgba(255,255,255,0.6);
 }
-/* ── Payments panel ── */
-#payments-panel{
-  background:rgba(100,200,100,0.05);
-  border:1px solid rgba(100,200,100,0.2);
-  border-radius:16px;
-  padding:20px 24px;
-  margin-bottom:28px;
-  display:none;
-}
-#payments-panel .pp-title{
-  font-size:0.68rem;letter-spacing:0.2em;
-  color:rgba(100,220,100,0.7);text-transform:uppercase;
-  margin-bottom:16px;
-}
-#payments-panel .pp-empty{
-  font-size:0.82rem;color:rgba(255,255,255,0.3);
-  text-align:center;padding:16px 0;
-}
-.pay-card{
-  background:rgba(255,255,255,0.04);
-  border:1px solid rgba(255,255,255,0.1);
-  border-radius:12px;
-  padding:14px;
-  margin-bottom:12px;
-}
-.pay-card .pay-email{
-  font-size:0.78rem;color:rgba(255,200,100,0.8);
-  margin-bottom:10px;font-weight:700;
-}
-.pay-card img{
-  width:100%;max-height:240px;object-fit:contain;
-  border-radius:8px;margin-bottom:12px;
-  background:rgba(255,255,255,0.06);
-}
-.pay-btns{display:flex;gap:10px;}
-.pay-approve{
-  flex:1;background:linear-gradient(135deg,#16a34a,#22c55e);
-  border:none;color:#fff;padding:11px;border-radius:9px;
-  font-weight:800;font-size:0.88rem;cursor:pointer;
-  transition:opacity 0.2s;
-}
-.pay-approve:hover{opacity:0.88;}
-.pay-reject{
-  flex:1;background:rgba(239,68,68,0.15);
-  border:1px solid rgba(239,68,68,0.35);
-  color:#f87171;padding:11px;border-radius:9px;
-  font-weight:700;font-size:0.88rem;cursor:pointer;
-  transition:background 0.2s;
-}
-.pay-reject:hover{background:rgba(239,68,68,0.25);}
-/* ── Sub badge ── */
-#sub-badge{
-  display:none;
-  background:rgba(34,197,94,0.12);
-  border:1px solid rgba(34,197,94,0.35);
-  border-radius:8px;padding:7px 16px;
-  font-size:0.75rem;color:#4ade80;
-  letter-spacing:0.05em;
-}
 </style>
 </head>
 <body>
@@ -263,17 +257,12 @@ html,body{
 <div id="topbar">
   <div id="topbar-title">✦ Мұғалімдер Платформасы</div>
   <div id="topbar-right">
-    <div id="sub-badge">✅ Жазылым белсенді</div>
     <div id="user-email"></div>
     <button id="logout-btn" onclick="doLogout()">Шығу</button>
   </div>
 </div>
 
 <div id="main">
-  <div id="payments-panel">
-    <div class="pp-title">💳 Кіріс төлемдер — растауды күтуде</div>
-    <div id="payments-list"><div class="pp-empty">Жүктелуде...</div></div>
-  </div>
   <div id="admin-panel">
     <div class="ap-title">👑 Администратор панелі</div>
     <span class="ap-count" id="ap-count">—</span>
@@ -295,6 +284,21 @@ html,body{
   </div>
 </div>
 
+<!-- Login overlay -->
+<div id="login-overlay">
+  <div id="login-box">
+    <h2>КІРУ</h2>
+    <div class="sub">Мұғалімдер платформасы</div>
+    <input class="inp" id="em" type="text" placeholder="Атыңыз (кез келген ат)" autocomplete="username">
+    <input class="inp" id="pw" type="password" placeholder="Пароль" autocomplete="current-password">
+    <button id="login-btn" onclick="doLogin()">Кіру</button>
+    <div id="login-err"></div>
+    <div id="login-tg">
+      Тіркелу үшін Telegram ботын қолданыңыз:<br>
+      <a href="https://t.me/studentgameBot" target="_blank">@studentgameBot</a>
+    </div>
+  </div>
+</div>
 
 <script>
 const API = '';
@@ -417,39 +421,23 @@ function openGame(file){
 }
 
 /* ── Auth ── */
-
-// Magic link: ?t=TOKEN auto-login
+// Magic link: ?t=TOKEN (Telegram bot жіберген сілтеме)
 (function(){
-  const params = new URLSearchParams(window.location.search);
-  const t = params.get('t');
-  if(t){
-    localStorage.setItem('teacher_token', t);
-    // Clean URL without reload
-    history.replaceState({}, '', window.location.pathname);
-  }
+  const p = new URLSearchParams(window.location.search);
+  const t = p.get('t');
+  if(t){ localStorage.setItem('teacher_token',t); history.replaceState({},'',' '); }
 })();
 
+const ADMIN_EMAIL = 'abdibekovajuldiz1994@gmail.com';
 const token = localStorage.getItem('teacher_token');
+const email = localStorage.getItem('teacher_email');
 
-async function checkAuth(){
-  if(!token) return;
-  try{
-    const r = await fetch(`${API}/api/me`,{headers:{'X-Token':token}});
-    if(r.status === 401){ localStorage.removeItem('teacher_token'); return; }
-    const d = await r.json();
-    if(!d.email) return;
-    document.getElementById('user-email').textContent = d.display_name || d.email;
-    if(d.has_sub){
-      const badge = document.getElementById('sub-badge');
-      badge.style.display = 'block';
-      const days = Math.ceil(((d.subscription_end||0) - Date.now()/1000) / 86400);
-      badge.textContent = `✅ Жазылым ${days} күн`;
-    }
-    if(d.is_admin){
-      loadAdminStats();
-      loadPayments();
-    }
-  } catch(e){}
+function checkAuth(){
+  if(token){
+    document.getElementById('login-overlay').style.display='none';
+    document.getElementById('user-email').textContent = email || '';
+    if(email === ADMIN_EMAIL) loadAdminStats();
+  }
 }
 checkAuth();
 
@@ -471,66 +459,43 @@ async function loadAdminStats(){
   } catch(e){}
 }
 
-async function loadPayments(){
-  document.getElementById('payments-panel').style.display = 'block';
+async function doLogin(){
+  const em = document.getElementById('em').value.trim();
+  const pw = document.getElementById('pw').value.trim();
+  const err = document.getElementById('login-err');
+  err.textContent = '';
+  if(!em||!pw){err.textContent='Атыңыз және пароль жазыңыз';return;}
   try{
-    const r = await fetch(`${API}/api/admin/payments`,{headers:{'X-Token':token}});
-    const payments = await r.json();
-    const list = document.getElementById('payments-list');
-    if(!Array.isArray(payments) || payments.length === 0){
-      list.innerHTML = '<div class="pp-empty">Күтудегі төлем жоқ</div>';
-      return;
+    const r = await fetch(`${API}/api/login`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:em,password:pw})
+    });
+    const d = await r.json();
+    if(d.success){
+      localStorage.setItem('teacher_token',d.token);
+      localStorage.setItem('teacher_email',d.email);
+      document.getElementById('login-overlay').style.display='none';
+      document.getElementById('user-email').textContent=d.email;
+      if(d.email === ADMIN_EMAIL) loadAdminStats();
+    } else {
+      err.textContent = d.error || 'Қате';
     }
-    list.innerHTML = payments.map(p=>`
-      <div class="pay-card" id="pc-${p.id}">
-        <div class="pay-email">👤 ${p.teacher_email} · ${p.amount} тг</div>
-        <img src="${p.screenshot}" alt="Чек">
-        <div class="pay-btns">
-          <button class="pay-approve" onclick="approvePayment(${p.id})">✅ Растау</button>
-          <button class="pay-reject"  onclick="rejectPayment(${p.id})">❌ Болдырмау</button>
-        </div>
-      </div>`).join('');
   } catch(e){
-    document.getElementById('payments-list').innerHTML = '<div class="pp-empty">Жүктеу қатесі</div>';
+    err.textContent = 'Сервермен байланыс жоқ';
   }
-}
-
-async function approvePayment(id){
-  const card = document.getElementById('pc-'+id);
-  if(card) card.style.opacity='0.5';
-  try{
-    const r = await fetch(`${API}/api/admin/payments/${id}/approve`,{
-      method:'POST', headers:{'X-Token':token}
-    });
-    const d = await r.json();
-    if(d.success && card) card.remove();
-    if(!document.querySelectorAll('.pay-card').length){
-      document.getElementById('payments-list').innerHTML = '<div class="pp-empty">Күтудегі төлем жоқ</div>';
-    }
-  } catch(e){ if(card) card.style.opacity='1'; }
-}
-
-async function rejectPayment(id){
-  const card = document.getElementById('pc-'+id);
-  if(card) card.style.opacity='0.5';
-  try{
-    const r = await fetch(`${API}/api/admin/payments/${id}/reject`,{
-      method:'POST', headers:{'X-Token':token}
-    });
-    const d = await r.json();
-    if(d.success && card) card.remove();
-    if(!document.querySelectorAll('.pay-card').length){
-      document.getElementById('payments-list').innerHTML = '<div class="pp-empty">Күтудегі төлем жоқ</div>';
-    }
-  } catch(e){ if(card) card.style.opacity='1'; }
 }
 
 function doLogout(){
   const t = localStorage.getItem('teacher_token');
   if(t) fetch(`${API}/api/logout`,{method:'POST',headers:{'X-Token':t}}).catch(()=>{});
   localStorage.removeItem('teacher_token');
+  localStorage.removeItem('teacher_email');
   location.reload();
 }
+
+document.getElementById('em').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('pw').focus(); });
+document.getElementById('pw').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
 </script>
 </body>
 </html>
