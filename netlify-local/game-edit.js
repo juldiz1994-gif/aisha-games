@@ -21,6 +21,9 @@
 
   if(!EDIT_MODE) return;
 
+  const FREE_LIMIT = 3;
+  const KASPI_NUM  = '+7-XXX-XXX-XXXX'; // ← Kaspi номерін осында өзгертіңіз
+
   /* ── Styles ── */
   const style = document.createElement('style');
   style.textContent = `
@@ -182,6 +185,25 @@
   document.body.appendChild(panel);
 
   window.__geClose = closePanel;
+
+  /* ── Paywall ── */
+  const paywall = document.createElement('div');
+  paywall.id = 'ge-paywall';
+  paywall.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:99999;align-items:center;justify-content:center;';
+  paywall.innerHTML = `
+    <div style="background:#0a0c1e;border:1px solid rgba(255,200,100,0.2);border-radius:20px;padding:36px 28px;text-align:center;max-width:350px;width:90%;font-family:'Segoe UI',sans-serif;">
+      <div style="font-size:3rem;margin-bottom:12px;">🔒</div>
+      <h2 style="color:#fff;font-size:1.2rem;font-weight:800;margin:0 0 8px;letter-spacing:0.02em;">Тегін нұсқа бітті</h2>
+      <p style="color:rgba(255,255,255,0.5);font-size:0.85rem;line-height:1.65;margin:0 0 20px;">Сіз <b style="color:#fbbf24;">3 тегін</b> сілтемені пайдаландыңыз.<br>Жалғастыру үшін 1 айлық<br>жазылым рәсімдеңіз.</p>
+      <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:14px;padding:16px;margin-bottom:16px;">
+        <div style="color:#fbbf24;font-size:1.5rem;font-weight:800;margin-bottom:6px;">4 990 ₸ / ай</div>
+        <div style="color:rgba(255,255,255,0.75);font-size:0.88rem;font-weight:600;">💳 Kaspi Gold:</div>
+        <div style="color:#fff;font-size:1.05rem;font-weight:800;letter-spacing:0.05em;margin-top:2px;">${KASPI_NUM}</div>
+      </div>
+      <p style="color:rgba(255,255,255,0.3);font-size:0.7rem;margin:0 0 16px;line-height:1.5;">Төлем жасап, скриншотты жіберіңіз</p>
+      <button onclick="document.getElementById('ge-paywall').style.display='none'" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.45);border-radius:8px;padding:8px 22px;cursor:pointer;font-size:0.8rem;font-family:inherit;">✕ Жабу</button>
+    </div>`;
+  document.body.appendChild(paywall);
 
   // Auto-open panel when page loads with ?edit=1
   window.addEventListener('load', ()=>{ setTimeout(openPanel, 300); });
@@ -899,6 +921,13 @@
 
   /* ── Save & get link ── */
   window.__geSave = async function(){
+    // Тегін лимит тексеру
+    const savesUsed = parseInt(localStorage.getItem('aisha_free_saves') || '0');
+    if(savesUsed >= FREE_LIMIT){
+      document.getElementById('ge-paywall').style.display = 'flex';
+      return;
+    }
+
     const btn = document.getElementById('ge-save-btn');
     const status = document.getElementById('ge-status');
     const linkBox = document.getElementById('ge-link-box');
@@ -914,10 +943,15 @@
       });
       const d = await r.json();
       if(d.id){
+        const newCount = savesUsed + 1;
+        localStorage.setItem('aisha_free_saves', newCount);
+        const remaining = FREE_LIMIT - newCount;
         const link = `${location.origin}/play/${d.id}`;
         document.getElementById('ge-link-text').textContent = link;
         linkBox.style.display = 'block';
-        status.textContent = '✅ Сақталды! Сілтемені көшіріп сабағыңызда пайдаланыңыз.';
+        status.textContent = remaining > 0
+          ? `✅ Сақталды! Тегін қалды: ${remaining}/${FREE_LIMIT}`
+          : `✅ Сақталды! Тегін сілтемелер таусылды. Келесі ойын үшін төлем жасаңыз.`;
       } else {
         status.textContent = d.error||'Қате болды';
       }
