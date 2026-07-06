@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Математика Шарлары</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+body{
+  background:radial-gradient(ellipse at 50% 30%,#0e0e2a 0%,#04040e 70%);
+  overflow:hidden;
+  width:100vw;
+  height:100vh;
+  font-family:'Segoe UI',system-ui,sans-serif;
+}
+
+/* ── Жоғарғы жазу ── */
+#hint{
+  position:fixed;
+  top:18px;left:50%;
+  transform:translateX(-50%);
+  font-size:0.82rem;
+  color:rgba(255,255,255,0.28);
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  z-index:10;
+  white-space:nowrap;
+  pointer-events:none;
+}
+
+/* ── Шарлар ── */
+.ball{
+  position:absolute;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  user-select:none;
+  text-align:center;
+  will-change:left,top;
+  transition:filter 0.12s;
+}
+
+.ball:hover{
+  filter:brightness(1.18) drop-shadow(0 0 18px rgba(255,255,255,0.4));
+  z-index:30;
+}
+
+.ball-inner{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+  padding:8px;
+}
+
+.ball-eq{
+  font-weight:800;
+  color:#fff;
+  text-shadow:0 1px 4px rgba(0,0,0,0.6);
+  line-height:1.1;
+  word-break:break-all;
+}
+
+/* ── Оверлей — есеп экранда ── */
+#overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.82);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  z-index:100;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:32px;
+  text-align:center;
+}
+
+#overlay.show{display:flex;}
+
+#ov-label{
+  font-size:0.75rem;
+  letter-spacing:0.25em;
+  color:rgba(255,255,255,0.35);
+  text-transform:uppercase;
+}
+
+#ov-eq{
+  font-size:clamp(2.5rem,8vw,6rem);
+  font-weight:900;
+  color:#fff;
+  letter-spacing:0.08em;
+  line-height:1.1;
+  text-shadow:0 0 60px var(--ball-glow,rgba(150,100,255,0.6));
+}
+
+#reveal-btn{
+  padding:14px 52px;
+  border:none;
+  border-radius:60px;
+  font-size:1rem;
+  font-weight:700;
+  cursor:pointer;
+  background:var(--ball-color,#7c3aed);
+  color:#fff;
+  letter-spacing:0.05em;
+  box-shadow:0 6px 30px var(--ball-glow,rgba(124,58,237,0.5));
+  transition:transform 0.15s,box-shadow 0.15s;
+}
+
+#reveal-btn:hover{transform:scale(1.06);}
+
+#ov-ans{
+  font-size:clamp(2rem,7vw,5rem);
+  font-weight:900;
+  color:#4ade80;
+  opacity:0;
+  transition:opacity 0.4s;
+  text-shadow:0 0 40px rgba(74,222,128,0.6);
+}
+
+#ov-ans.show{opacity:1;}
+
+#close-btn{
+  position:fixed;
+  top:22px;right:28px;
+  background:rgba(255,255,255,0.08);
+  border:1.5px solid rgba(255,255,255,0.22);
+  color:rgba(255,255,255,0.8);
+  padding:9px 22px;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:0.85rem;
+  transition:background 0.15s;
+}
+
+#close-btn:hover{background:rgba(255,255,255,0.16);}
+
+/* ── Жұлдызлар фоны ── */
+#stars{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+}
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+<div id="hint">🎯 Санды басыңыз — сұрақ шығады</div>
+<div id="scene"></div>
+
+<div id="overlay">
+  <button id="close-btn">✕ Жабу</button>
+  <div id="ov-label">Есепті шешіңіз</div>
+  <div id="ov-eq">?</div>
+  <button id="reveal-btn">👁&nbsp; Жауабын ашу</button>
+  <div id="ov-ans"></div>
+  <button id="next-prob-btn" style="margin-top:8px;padding:11px 36px;border:none;border-radius:50px;font-size:0.88rem;font-weight:700;cursor:pointer;background:#22c55e;color:#fff;letter-spacing:0.04em;box-shadow:0 4px 16px rgba(34,197,94,0.4);transition:transform 0.15s,box-shadow 0.15s;">Келесі есеп →</button>
+</div>
+
+<script>
+// ══ GAME CONFIG INTERFACE ══
+window.GAME_TYPE  = 'quiz';
+window.GAME_TITLE = 'Математика Викторинасы';
+let _quizSubject = 'Математика';
+window.getGameConfig = () => ({ title: _quizSubject, subject: _quizSubject, problems: PROBLEMS });
+window.setGameConfig  = function(cfg){
+  if(!cfg) return;
+  if(cfg.subject) _quizSubject = cfg.subject;
+  if(cfg.title && !cfg.subject) _quizSubject = cfg.title;
+  if(cfg.problems && cfg.problems.length){
+    PROBLEMS.length = 0;
+    cfg.problems.forEach(p => {
+      if(p.q !== undefined){
+        PROBLEMS.push({ s: String(p.a).slice(0,10), full: p.q, a: p.a });
+      } else {
+        PROBLEMS.push(p);
+      }
+    });
+    rebuildBalls();
+  }
+};
+
+// ══ 30 ЕСЕП ══
+let PROBLEMS = [
+  // ── Қосу ──
+  { s:'14+23',  full:'14 + 23 = ?', a:37  },
+  { s:'36+47',  full:'36 + 47 = ?', a:83  },
+  { s:'52+29',  full:'52 + 29 = ?', a:81  },
+  { s:'18+65',  full:'18 + 65 = ?', a:83  },
+  { s:'43+38',  full:'43 + 38 = ?', a:81  },
+  { s:'71+19',  full:'71 + 19 = ?', a:90  },
+  { s:'27+56',  full:'27 + 56 = ?', a:83  },
+  { s:'84+17',  full:'84 + 17 = ?', a:101 },
+  // ── Азайту ──
+  { s:'75−38',  full:'75 − 38 = ?', a:37  },
+  { s:'93−47',  full:'93 − 47 = ?', a:46  },
+  { s:'61−25',  full:'61 − 25 = ?', a:36  },
+  { s:'88−53',  full:'88 − 53 = ?', a:35  },
+  { s:'44−19',  full:'44 − 19 = ?', a:25  },
+  { s:'70−36',  full:'70 − 36 = ?', a:34  },
+  { s:'57−28',  full:'57 − 28 = ?', a:29  },
+  { s:'82−45',  full:'82 − 45 = ?', a:37  },
+  // ── Көбейту ──
+  { s:'6×7',    full:'6 × 7 = ?',   a:42  },
+  { s:'8×9',    full:'8 × 9 = ?',   a:72  },
+  { s:'7×8',    full:'7 × 8 = ?',   a:56  },
+  { s:'9×6',    full:'9 × 6 = ?',   a:54  },
+  { s:'5×8',    full:'5 × 8 = ?',   a:40  },
+  { s:'7×7',    full:'7 × 7 = ?',   a:49  },
+  { s:'6×9',    full:'6 × 9 = ?',   a:54  },
+  { s:'8×8',    full:'8 × 8 = ?',   a:64  },
+  // ── Бөлу ──
+  { s:'72÷9',   full:'72 ÷ 9 = ?',  a:8   },
+  { s:'56÷7',   full:'56 ÷ 7 = ?',  a:8   },
+  { s:'63÷9',   full:'63 ÷ 9 = ?',  a:7   },
+  { s:'48÷6',   full:'48 ÷ 6 = ?',  a:8   },
+  { s:'45÷5',   full:'45 ÷ 5 = ?',  a:9   },
+  { s:'36÷4',   full:'36 ÷ 4 = ?',  a:9   },
+];
+
+// ══ ЖҰЛДЫЗЛАР ══
+(function(){
+  const c = document.getElementById('stars');
+  const ctx = c.getContext('2d');
+  c.width  = window.innerWidth;
+  c.height = window.innerHeight;
+  const stars = Array.from({length:120},()=>({
+    x: Math.random()*c.width,
+    y: Math.random()*c.height,
+    r: Math.random()*1.2+0.3,
+    a: Math.random()
+  }));
+  stars.forEach(s=>{
+    ctx.beginPath();
+    ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${s.a})`;
+    ctx.fill();
+  });
+})();
+
+// ══ ФИЗИКА ══
+const scene = document.getElementById('scene');
+let W = window.innerWidth;
+let H = window.innerHeight;
+const RADIUS = 48;
+const SPEED  = 1.8;
+const BOUNCE = 0.82;
+const FRICTION = 0.999;
+
+const balls = [];
+
+function buildBalls(){
+  // Clear old balls
+  scene.innerHTML = '';
+  balls.length = 0;
+
+PROBLEMS.forEach((prob, i) => {
+  const el   = document.createElement('div');
+  el.className = 'ball';
+  const d = RADIUS * 2;
+  el.style.width  = d + 'px';
+  el.style.height = d + 'px';
+
+  // Цвет — HSL
+  const hue  = (i * 32 + 15) % 360;
+  const sat  = 80 + Math.floor(Math.random()*15);
+  const lit  = 52 + Math.floor(Math.random()*10);
+  const dark = Math.max(20, lit - 22);
+  const glowA = '0.55';
+
+  const grad = `radial-gradient(circle at 36% 30%,
+    hsl(${hue},${sat}%,88%) 0%,
+    hsl(${hue},${sat}%,${lit}%) 45%,
+    hsl(${hue},${sat}%,${dark}%) 100%)`;
+
+  el.style.background = grad;
+  el.style.boxShadow  = `0 6px 24px hsla(${hue},${sat}%,50%,0.5),
+                          inset 0 -4px 10px rgba(0,0,0,0.25),
+                          inset 0 2px 6px rgba(255,255,255,0.3)`;
+
+  // Шарда тек нөмір
+  const inner = document.createElement('div');
+  inner.className = 'ball-inner';
+  const span = document.createElement('span');
+  span.className = 'ball-eq';
+  span.style.fontSize = '20px';
+  span.textContent = String(i + 1);
+  inner.appendChild(span);
+  el.appendChild(inner);
+  scene.appendChild(el);
+
+  // Физика объект
+  const angle = Math.random() * Math.PI * 2;
+  const spd   = SPEED * (0.7 + Math.random() * 0.6);
+  const obj = {
+    el, prob,
+    hue, sat, lit,
+    glowColor:`hsla(${hue},${sat}%,60%,0.7)`,
+    solidColor:`hsl(${hue},${sat}%,${lit}%)`,
+    x: RADIUS + Math.random() * (W - RADIUS*2),
+    y: RADIUS + Math.random() * (H - RADIUS*2),
+    vx: Math.cos(angle) * spd,
+    vy: Math.sin(angle) * spd,
+    r: RADIUS,
+    dragging: false,
+    startX: 0, startY: 0,
+  };
+
+  // ── Drag ──
+  let dOX=0,dOY=0,prevX=0,prevY=0;
+
+  function pointerDown(cx,cy){
+    obj.dragging = true;
+    obj.startX = cx; obj.startY = cy;
+    const rect = el.getBoundingClientRect();
+    dOX = cx - rect.left;
+    dOY = cy - rect.top;
+    prevX = cx; prevY = cy;
+    obj.vx = 0; obj.vy = 0;
+    el.style.zIndex = '25';
+  }
+
+  function pointerMove(cx,cy){
+    if(!obj.dragging) return;
+    const sr = scene.getBoundingClientRect();
+    obj.x = cx - sr.left - dOX;
+    obj.y = cy - sr.top  - dOY;
+    obj.vx = (cx - prevX) * 0.45;
+    obj.vy = (cy - prevY) * 0.45;
+    prevX = cx; prevY = cy;
+  }
+
+  function pointerUp(cx,cy){
+    if(!obj.dragging) return;
+    obj.dragging = false;
+    el.style.zIndex = '';
+    const moved = Math.abs(cx-obj.startX)+Math.abs(cy-obj.startY);
+    if(moved < 8) showProblem(obj);
+  }
+
+  el.addEventListener('mousedown',  e=>{ e.preventDefault(); pointerDown(e.clientX,e.clientY); });
+  el.addEventListener('touchstart', e=>{ pointerDown(e.touches[0].clientX,e.touches[0].clientY); },{passive:true});
+  document.addEventListener('mousemove',  e=>{ pointerMove(e.clientX,e.clientY); });
+  document.addEventListener('touchmove',  e=>{ pointerMove(e.touches[0].clientX,e.touches[0].clientY); },{passive:true});
+  document.addEventListener('mouseup',    e=>{ pointerUp(e.clientX,e.clientY); });
+  document.addEventListener('touchend',   e=>{ pointerUp(
+    e.changedTouches[0].clientX,e.changedTouches[0].clientY); });
+
+  balls.push(obj);
+});
+} // end buildBalls
+
+function rebuildBalls(){ buildBalls(); }
+buildBalls();
+
+// ══ ФИЗИКА ЦИКЛ ══
+function tick(){
+  balls.forEach(b => {
+    if(b.dragging) {
+      b.el.style.left = b.x + 'px';
+      b.el.style.top  = b.y + 'px';
+      return;
+    }
+    b.vx *= FRICTION;
+    b.vy *= FRICTION;
+    b.x  += b.vx;
+    b.y  += b.vy;
+
+    // Қабырға секіру
+    if(b.x - b.r < 0)   { b.x = b.r;   b.vx =  Math.abs(b.vx)*BOUNCE; }
+    if(b.x + b.r > W)   { b.x = W-b.r; b.vx = -Math.abs(b.vx)*BOUNCE; }
+    if(b.y - b.r < 0)   { b.y = b.r;   b.vy =  Math.abs(b.vy)*BOUNCE; }
+    if(b.y + b.r > H)   { b.y = H-b.r; b.vy = -Math.abs(b.vy)*BOUNCE; }
+
+    b.el.style.left = (b.x - b.r) + 'px';
+    b.el.style.top  = (b.y - b.r) + 'px';
+  });
+
+  // Шарлар арасы соқтығысу
+  for(let i=0;i<balls.length;i++){
+    for(let j=i+1;j<balls.length;j++){
+      const a=balls[i], b=balls[j];
+      const dx=b.x-a.x, dy=b.y-a.y;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      const min=a.r+b.r;
+      if(dist<min && dist>0.01){
+        const nx=dx/dist, ny=dy/dist;
+        const overlap=(min-dist)/2;
+        if(!a.dragging){ a.x-=nx*overlap; a.y-=ny*overlap; }
+        if(!b.dragging){ b.x+=nx*overlap; b.y+=ny*overlap; }
+        const dvx=b.vx-a.vx, dvy=b.vy-a.vy;
+        const dot=dvx*nx+dvy*ny;
+        if(dot<0){
+          const imp=dot*0.88;
+          if(!a.dragging){ a.vx+=imp*nx; a.vy+=imp*ny; }
+          if(!b.dragging){ b.vx-=imp*nx; b.vy-=imp*ny; }
+        }
+      }
+    }
+  }
+
+  requestAnimationFrame(tick);
+}
+
+tick();
+
+// ══ ЕСЕП ЭКРАНДА ══
+const overlay   = document.getElementById('overlay');
+const ovEq      = document.getElementById('ov-eq');
+const ovAns     = document.getElementById('ov-ans');
+const revealBtn = document.getElementById('reveal-btn');
+const closeBtn  = document.getElementById('close-btn');
+const nextProbBtn = document.getElementById('next-prob-btn');
+let activeBall  = null;
+let quizProbIdx = 0;
+
+function showProblemByIdx(idx){
+  quizProbIdx = ((idx % PROBLEMS.length) + PROBLEMS.length) % PROBLEMS.length;
+  const prob = PROBLEMS[quizProbIdx];
+  ovEq.textContent = prob.full;
+  const ans = prob.a;
+  ovAns.textContent = (typeof ans === 'number') ? '= ' + ans : String(ans);
+  ovAns.classList.remove('show');
+  const ball = balls.find(b => b.prob === prob) || balls[0];
+  if(ball){
+    overlay.style.setProperty('--ball-color', ball.solidColor);
+    overlay.style.setProperty('--ball-glow',  ball.glowColor);
+  }
+  nextProbBtn.textContent = 'Келесі есеп → ' + (quizProbIdx+1) + ' / ' + PROBLEMS.length;
+  overlay.classList.add('show');
+}
+
+function showProblem(obj){
+  activeBall = obj;
+  quizProbIdx = PROBLEMS.indexOf(obj.prob);
+  ovEq.textContent = obj.prob.full;
+  const ans = obj.prob.a;
+  ovAns.textContent = (typeof ans === 'number') ? '= ' + ans : String(ans);
+  ovAns.classList.remove('show');
+  overlay.style.setProperty('--ball-color', obj.solidColor);
+  overlay.style.setProperty('--ball-glow',  obj.glowColor);
+  nextProbBtn.textContent = 'Келесі есеп → ' + (quizProbIdx+1) + ' / ' + PROBLEMS.length;
+  overlay.classList.add('show');
+}
+
+revealBtn.addEventListener('click', ()=>{
+  ovAns.classList.add('show');
+});
+
+nextProbBtn.addEventListener('click', ()=>{
+  activeBall = null;
+  showProblemByIdx(quizProbIdx + 1);
+});
+
+closeBtn.addEventListener('click', ()=>{
+  overlay.classList.remove('show');
+  if(activeBall){
+    const b = activeBall;
+    activeBall = null;
+    b.el.style.transition = 'opacity 0.4s, transform 0.4s';
+    b.el.style.opacity = '0';
+    b.el.style.transform = 'scale(0)';
+    setTimeout(()=>{
+      b.el.remove();
+      const idx = balls.indexOf(b);
+      if(idx >= 0) balls.splice(idx, 1);
+    }, 420);
+  }
+});
+
+// Escape пернесі
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape') overlay.classList.remove('show');
+});
+
+// Экран өлшемі өзгерсе
+window.addEventListener('resize',()=>{
+  W=window.innerWidth;
+  H=window.innerHeight;
+});
+</script>
+<script src="game-edit.js"></script>
+</body>
+</html>

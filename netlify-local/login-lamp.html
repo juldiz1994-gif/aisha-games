@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Lamp</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+      background: #121417;
+      transition: background 0.65s ease;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    body.lamp-on { background: #1c1f24; }
+
+    /* ── Тақырып ── */
+    .ll-title {
+      flex: 0 0 auto;
+      text-align: center;
+      padding: 1.6rem 0 1.2rem;
+      color: #FFFFFF;
+      font-size: clamp(2rem, 4.5vw, 3.4rem);
+      font-weight: 300;
+      font-style: italic;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Сахна ── */
+    .ll-scene {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      padding: 0 5% 3%;
+      overflow: hidden;
+    }
+
+    /* Ambient жарық (сахнаға) */
+    .ll-scene::before {
+      content: '';
+      position: absolute;
+      left: 2%;
+      top: -10%;
+      width: 60%;
+      height: 130%;
+      background: radial-gradient(ellipse at 35% 40%,
+        rgba(255, 210, 80, 0.14) 0%,
+        rgba(255, 185, 50, 0.06) 45%,
+        transparent 70%);
+      opacity: 0;
+      transition: opacity 0.65s ease;
+      pointer-events: none;
+      z-index: 0;
+    }
+    body.lamp-on .ll-scene::before { opacity: 1; }
+
+    /* ── Шам ── */
+    .ll-lamp {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      z-index: 2;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Шам жарығы (glow) */
+    .ll-glow {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: clamp(240px, 40vw, 360px);
+      height: clamp(240px, 40vw, 360px);
+      background: radial-gradient(ellipse at 50% 35%,
+        rgba(255, 215, 90, 0.55) 0%,
+        rgba(255, 190, 60, 0.28) 28%,
+        rgba(255, 160, 40, 0.1) 55%,
+        transparent 72%);
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.65s ease;
+      pointer-events: none;
+      z-index: -1;
+    }
+    body.lamp-on .ll-glow { opacity: 1; }
+
+    /* Купол (shade) */
+    .ll-shade {
+      width: clamp(130px, 20vw, 190px);
+      height: clamp(72px, 11vw, 108px);
+      background: linear-gradient(175deg, #C8C2B4 0%, #EDE8DE 30%, #F5F0E6 60%, #EAE4D8 100%);
+      border-radius: 50% 50% 44% 44% / 68% 68% 32% 32%;
+      position: relative;
+      transition: box-shadow 0.65s ease;
+    }
+    body.lamp-on .ll-shade {
+      box-shadow:
+        0 0 30px 12px rgba(255, 215, 90, 0.45),
+        0 0 70px 30px rgba(255, 195, 60, 0.22),
+        0 0 120px 55px rgba(255, 170, 40, 0.1);
+    }
+
+    /* Шеті (rim) */
+    .ll-shade::after {
+      content: '';
+      position: absolute;
+      bottom: -3px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 55%;
+      height: clamp(8px, 1.2vw, 14px);
+      background: linear-gradient(180deg, #B8B0A0 0%, #C8C0B0 100%);
+      border-radius: 50%;
+    }
+
+    /* Доп (pendant) */
+    .ll-pendant {
+      position: absolute;
+      bottom: clamp(-36px, -5.5vw, -52px);
+      left: 50%;
+      transform-origin: top center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .ll-pendant.swinging {
+      animation: pendSwing 0.72s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    }
+    @keyframes pendSwing {
+      0%   { transform: rotate(0deg); }
+      18%  { transform: rotate(20deg); }
+      40%  { transform: rotate(-14deg); }
+      58%  { transform: rotate(8deg); }
+      74%  { transform: rotate(-4deg); }
+      88%  { transform: rotate(1.5deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    .ll-cord {
+      width: 2px;
+      height: clamp(18px, 2.8vw, 28px);
+      background: #A09080;
+    }
+    .ll-ball {
+      width: clamp(11px, 1.7vw, 17px);
+      height: clamp(11px, 1.7vw, 17px);
+      background: radial-gradient(circle at 38% 35%, #DDD0B0, #A89068);
+      border-radius: 50%;
+      box-shadow: 1px 2px 5px rgba(0,0,0,0.5);
+    }
+
+    /* Тіреу (pole) */
+    .ll-pole {
+      width: clamp(9px, 1.3vw, 14px);
+      height: clamp(90px, 14vw, 130px);
+      background: linear-gradient(90deg, #A8A49A 0%, #D0CCC0 45%, #A8A49A 100%);
+      position: relative;
+    }
+
+    /* Табан (base) */
+    .ll-base {
+      width: clamp(110px, 17vw, 160px);
+      height: clamp(11px, 1.6vw, 17px);
+      background: linear-gradient(180deg, #C0BCB2 0%, #D0CCC0 60%, #B0ACA2 100%);
+      border-radius: 50%;
+    }
+
+    /* ── Кіру формасы ── */
+    .ll-form-wrap {
+      position: absolute;
+      right: 5%;
+      top: 50%;
+      width: min(330px, 50%);
+      transform: translateY(-50%) translateX(30px);
+      opacity: 0;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+      z-index: 4;
+      pointer-events: none;
+    }
+    body.lamp-on .ll-form-wrap {
+      opacity: 1;
+      transform: translateY(-50%) translateX(0);
+      pointer-events: auto;
+    }
+
+    .ll-form {
+      background: rgba(28, 33, 42, 0.96);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      padding: 1.5rem 1.3rem 1.3rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.55), 0 0 30px rgba(255,200,80,0.05);
+    }
+
+    .ll-form-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #FFFFFF;
+      text-align: center;
+      margin-bottom: 1rem;
+      letter-spacing: 0.01em;
+    }
+
+    .ll-label {
+      font-size: 0.68rem;
+      color: #8896A8;
+      margin-bottom: 0.28rem;
+      letter-spacing: 0.03em;
+    }
+
+    .ll-field {
+      background: #252B36;
+      border: 1.5px solid #333C4A;
+      border-radius: 8px;
+      padding: 0.55rem 0.8rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      min-height: 37px;
+      font-size: 0.8rem;
+      color: #C5CDD8;
+      font-family: inherit;
+      transition: border-color 0.3s;
+    }
+    .ll-field.typing { border-color: #C8A83C; }
+
+    .ll-cursor {
+      color: #C8A83C;
+      font-weight: 300;
+      margin-left: 1px;
+      animation: blinkCursor 0.8s step-end infinite;
+    }
+    @keyframes blinkCursor {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    .ll-dots {
+      letter-spacing: 0.18em;
+      font-size: 0.9rem;
+    }
+
+    .ll-signin {
+      width: 100%;
+      padding: 0.62rem;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #A07C08 0%, #D4AF37 45%, #B89020 100%);
+      color: #1A1200;
+      font-size: 0.88rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      margin-top: 0.1rem;
+      box-shadow: 0 4px 18px rgba(200, 165, 50, 0.3);
+      opacity: 0.4;
+      transition: opacity 0.4s ease;
+    }
+    .ll-signin.ready { opacity: 1; }
+
+    /* ── Сөз жұптары (форма ішінде) ── */
+    .ll-pairs-divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      margin: 0.7rem 0 0.6rem;
+    }
+    .ll-pair-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .ll-pair-col {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 7px;
+      padding: 7px 10px;
+      font-size: 0.8rem;
+      color: #e8e8e8;
+      text-align: center;
+    }
+    .ll-pair-col.col1 { border-color: rgba(255,200,80,0.2); }
+  </style>
+</head>
+<body>
+
+  <div class="ll-title">Login Lamp</div>
+
+  <div class="ll-scene">
+
+    <!-- Шам -->
+    <div class="ll-lamp" id="llLamp">
+      <div class="ll-glow"></div>
+      <div class="ll-shade">
+        <div class="ll-pendant" id="llPendant">
+          <div class="ll-cord"></div>
+          <div class="ll-ball" id="llBall"></div>
+        </div>
+      </div>
+      <div class="ll-pole"></div>
+      <div class="ll-base"></div>
+    </div>
+
+    <!-- Форма + сөз жұптары бір картада -->
+    <div class="ll-form-wrap">
+      <div class="ll-form">
+        <div class="ll-form-title">Welcome</div>
+        <div class="ll-label">Username</div>
+        <div class="ll-field" id="llUserField">
+          <span id="llUsername"></span><span class="ll-cursor" id="llCursor">|</span>
+        </div>
+        <hr class="ll-pairs-divider">
+        <div id="llPairsList"></div>
+        <button class="ll-signin" id="llSignin">Sign In</button>
+      </div>
+    </div>
+    <span id="llPairsTitle" style="display:none"></span>
+
+  </div>
+
+  <script>
+    const bodyEl     = document.body;
+    const lampEl     = document.getElementById('llLamp');
+    const pendantEl  = document.getElementById('llPendant');
+    const usernameEl = document.getElementById('llUsername');
+    const cursorEl   = document.getElementById('llCursor');
+    const passwordEl = document.getElementById('llPassword');
+    const signinBtn  = document.getElementById('llSignin');
+    const userField  = document.getElementById('llUserField');
+
+    let isOn = false;
+    let typingDone = false;
+    let currentStudentName = 'ai_aisha_kz';
+
+    function toggleLamp() {
+      pendantEl.classList.remove('swinging');
+      void pendantEl.offsetWidth;
+      pendantEl.classList.add('swinging');
+      setTimeout(() => pendantEl.classList.remove('swinging'), 720);
+
+      isOn = !isOn;
+
+      if (isOn) {
+        bodyEl.classList.add('lamp-on');
+        if (!typingDone) {
+          typingDone = true;
+          setTimeout(() => startTyping(currentStudentName), 600);
+        }
+      } else {
+        bodyEl.classList.remove('lamp-on');
+      }
+    }
+
+    lampEl.addEventListener('click', toggleLamp);
+
+    // Автоматты: 0.9с кейін шамды жаңыз
+    setTimeout(toggleLamp, 900);
+
+    function startTyping(name) {
+      const username = name || currentStudentName;
+      currentStudentName = username;
+      let i = 0;
+      usernameEl.textContent = '';
+      cursorEl.style.display = '';
+      userField.classList.add('typing');
+      signinBtn.classList.remove('ready');
+
+      (function typeChar() {
+        if (i <= username.length) {
+          usernameEl.textContent = username.slice(0, i++);
+          setTimeout(typeChar, 88);
+        } else {
+          userField.classList.remove('typing');
+          cursorEl.style.display = 'none';
+          signinBtn.classList.add('ready');
+        }
+      })();
+    }
+
+  window.GAME_TYPE  = 'login-lamp';
+  window.GAME_TITLE = 'Шам Логині';
+
+  let LAMP_PAIRS    = [];
+  let LAMP_STUDENTS = [];
+  let lampIdx       = 0;
+
+  function renderPairs(){
+    const list = document.getElementById('llPairsList');
+    if(!list) return;
+    list.innerHTML = '';
+    const pairs = LAMP_PAIRS.length ? LAMP_PAIRS : [{col1:'Сөз 1', col2:'Word 1'},{col1:'Сөз 2', col2:'Word 2'}];
+    pairs.forEach(p=>{
+      const row = document.createElement('div');
+      row.className = 'll-pair-row';
+      row.innerHTML = `<div class="ll-pair-col col1">${p.col1||''}</div><div class="ll-pair-col">${p.col2||''}</div>`;
+      list.appendChild(row);
+    });
+  }
+
+  function showLampStudent(i){
+    const s = LAMP_STUDENTS[i];
+    if(!s) return;
+    currentStudentName = s.name || ('Оқушы ' + (i+1));
+    LAMP_PAIRS = (s.pairs || []).slice(0, 3);
+    renderPairs();
+    if(isOn) startTyping(currentStudentName);
+    const counter = document.getElementById('lamp-counter');
+    if(counter) counter.textContent = (i+1) + ' / ' + LAMP_STUDENTS.length;
+  }
+
+  function showLampNextBtn(){
+    if(LAMP_STUDENTS.length < 2) return;
+    if(document.getElementById('lamp-next-btn')) return;
+
+    const counter = document.createElement('div');
+    counter.id = 'lamp-counter';
+    counter.style.cssText = 'position:fixed;top:16px;right:20px;z-index:200;color:rgba(255,220,100,0.75);font-size:0.88rem;font-weight:700;letter-spacing:0.08em;';
+    counter.textContent = '1 / ' + LAMP_STUDENTS.length;
+    document.body.appendChild(counter);
+
+    const btn = document.createElement('button');
+    btn.id = 'lamp-next-btn';
+    btn.textContent = '▶ Келесі оқушы';
+    btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:200;background:rgba(255,200,80,0.15);border:1px solid rgba(255,200,80,0.45);color:#ffd700;padding:11px 28px;border-radius:50px;font-size:0.88rem;font-weight:700;cursor:pointer;letter-spacing:0.06em;';
+    btn.onclick = () => {
+      lampIdx = (lampIdx + 1) % LAMP_STUDENTS.length;
+      showLampStudent(lampIdx);
+    };
+    document.body.appendChild(btn);
+  }
+
+  window.getGameConfig  = () => ({
+    title: 'Шам Логині',
+    students: LAMP_STUDENTS.length ? LAMP_STUDENTS.slice() : undefined,
+    pairs: LAMP_PAIRS.slice()
+  });
+
+  window.setGameConfig  = function(cfg){
+    if(cfg && cfg.students && cfg.students.length){
+      LAMP_STUDENTS = cfg.students;
+      lampIdx = 0;
+      showLampStudent(0);
+      showLampNextBtn();
+    } else if(cfg && cfg.pairs && cfg.pairs.length){
+      LAMP_PAIRS = cfg.pairs;
+      if(cfg.title) document.getElementById('llPairsTitle').textContent = cfg.title;
+      renderPairs();
+    }
+  };
+
+  renderPairs();
+  </script>
+<script src="game-edit.js"></script>
+</body>
+</html>

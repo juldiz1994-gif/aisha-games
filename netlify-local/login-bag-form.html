@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Bag Form</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #111111;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ── Тақырып ── */
+    .lbf-title {
+      background: #111111;
+      color: #FFFFFF;
+      font-size: clamp(1.6rem, 3.5vw, 2.8rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      text-align: center;
+      padding: 1.2rem 0;
+      flex: 0 0 auto;
+      animation: titleIn 0.6s ease-out both;
+    }
+    @keyframes titleIn {
+      from { opacity: 0; transform: translateY(-28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Көк аймақ ── */
+    .lbf-blue {
+      flex: 1;
+      background: #5B5FEF;
+      position: relative;
+      overflow: hidden;
+      cursor: none;
+    }
+
+    /* ── Кейіпкер контейнері ── */
+    .lbf-char {
+      position: absolute;
+      bottom: 0;
+      left: 60px;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .lbf-char-inner {
+      display: block;
+      transition: transform 0.08s;
+    }
+
+    /* ─── CSS кейіпкер ─── */
+    .p-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: clamp(52px, 8vw, 76px);
+      filter: drop-shadow(2px 8px 18px rgba(0,0,0,0.35));
+    }
+
+    /* Бас */
+    .p-head {
+      width: clamp(26px, 4vw, 38px);
+      height: clamp(26px, 4vw, 38px);
+      background: #FAC898;
+      border-radius: 50%;
+      border: 2px solid #C87A48;
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .p-hair {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 42%;
+      background: #3D1F08;
+      border-radius: 50% 50% 0 0;
+    }
+    .p-eyes {
+      position: absolute;
+      top: 55%;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: clamp(5px, 0.8vw, 8px);
+    }
+    .p-eye {
+      width: clamp(3px, 0.5vw, 5px);
+      height: clamp(3px, 0.5vw, 5px);
+      background: #1A1A1A;
+      border-radius: 50%;
+    }
+    .p-mouth {
+      position: absolute;
+      bottom: 18%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: clamp(6px, 1vw, 10px);
+      height: clamp(3px, 0.4vw, 4px);
+      border-bottom: 2px solid #C87A48;
+      border-radius: 0 0 50% 50%;
+    }
+
+    /* Дене */
+    .p-body {
+      width: clamp(38px, 5.8vw, 54px);
+      height: clamp(34px, 5.2vw, 48px);
+      background: #1E2D5A;
+      border-radius: 6px 6px 2px 2px;
+      position: relative;
+      overflow: visible;
+      flex-shrink: 0;
+    }
+    .p-shirt {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 30%;
+      height: 100%;
+      background: #F2F2F2;
+      border-radius: 0 0 2px 2px;
+    }
+    .p-tie {
+      position: absolute;
+      top: 12%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: clamp(5px, 0.8vw, 8px);
+      height: 65%;
+      background: #E63946;
+      clip-path: polygon(20% 0%, 80% 0%, 95% 62%, 50% 100%, 5% 62%);
+      z-index: 2;
+    }
+
+    /* Қолдар */
+    .p-arm {
+      position: absolute;
+      top: 6px;
+      width: clamp(8px, 1.2vw, 12px);
+      height: clamp(26px, 4vw, 36px);
+      background: #1E2D5A;
+      border-radius: 4px;
+      transform-origin: top center;
+    }
+    .p-arm-l { left: clamp(-10px, -1.5vw, -7px); }
+    .p-arm-r { right: clamp(-10px, -1.5vw, -7px); }
+
+    /* Белбеу */
+    .p-waist {
+      width: clamp(34px, 5.2vw, 48px);
+      height: clamp(6px, 0.9vw, 9px);
+      background: #111A35;
+      border-radius: 0 0 3px 3px;
+      flex-shrink: 0;
+    }
+
+    /* Аяқтар */
+    .p-legs {
+      display: flex;
+      gap: clamp(4px, 0.6vw, 7px);
+      justify-content: center;
+    }
+
+    .p-leg {
+      width: clamp(11px, 1.7vw, 16px);
+      height: clamp(30px, 4.6vw, 42px);
+      background: #1E2D5A;
+      border-radius: 0 0 4px 4px;
+      transform-origin: top center;
+      position: relative;
+    }
+
+    /* Аяқ киім */
+    .p-leg::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: -3px;
+      width: calc(100% + 8px);
+      height: clamp(7px, 1vw, 10px);
+      background: #0D0D0D;
+      border-radius: 2px 6px 5px 3px;
+    }
+
+    /* ── ЖҮРУ АНИМАЦИЯСЫ ── */
+    .lbf-char.walking .p-leg-l {
+      animation: legSwing 0.36s ease-in-out infinite alternate;
+    }
+    .lbf-char.walking .p-leg-r {
+      animation: legSwing 0.36s ease-in-out infinite alternate-reverse;
+    }
+    .lbf-char.walking .p-arm-l {
+      animation: armSwing 0.36s ease-in-out infinite alternate-reverse;
+    }
+    .lbf-char.walking .p-arm-r {
+      animation: armSwing 0.36s ease-in-out infinite alternate;
+    }
+    .lbf-char.walking .p-wrap {
+      animation: bodyBob 0.36s ease-in-out infinite;
+    }
+
+    @keyframes legSwing {
+      from { transform: rotate(-30deg); }
+      to   { transform: rotate(30deg); }
+    }
+    @keyframes armSwing {
+      from { transform: rotate(-22deg); }
+      to   { transform: rotate(22deg); }
+    }
+    @keyframes bodyBob {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-5px); }
+    }
+
+    /* ── Чемодан ── */
+    .lbf-bag {
+      position: absolute;
+      bottom: 6%;
+      left: 120px;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      pointer-events: none;
+      z-index: 2;
+      filter: drop-shadow(1px 4px 8px rgba(0,0,0,0.3));
+      animation: bagPop 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.9s both;
+    }
+    @keyframes bagPop {
+      from { transform: scale(0); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── Форма ── */
+    .lbf-form-wrap {
+      position: absolute;
+      right: 4%;
+      top: 50%;
+      transform: translateY(-50%) scale(0);
+      transform-origin: center center;
+      width: min(320px, 42%);
+      z-index: 3;
+      animation: formPop 0.5s cubic-bezier(0.34,1.56,0.64,1) 1.5s forwards;
+    }
+    @keyframes formPop {
+      from { transform: translateY(-50%) scale(0); opacity: 0; }
+      to   { transform: translateY(-50%) scale(1); opacity: 1; }
+    }
+    .lbf-form {
+      background: #FFFFFF;
+      border-radius: 14px;
+      padding: 1.2rem 1.3rem 1rem;
+      box-shadow: 0 14px 46px rgba(0,0,0,0.3);
+      position: relative;
+    }
+    .lbf-close {
+      position: absolute;
+      top: 0.6rem;
+      right: 0.8rem;
+      font-size: 1rem;
+      color: #AAAAAA;
+    }
+    .lbf-form-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #1A1A2E;
+      text-align: center;
+      margin-bottom: 0.25rem;
+    }
+    .lbf-form-sub {
+      font-size: 0.68rem;
+      color: #888888;
+      text-align: center;
+      line-height: 1.35;
+      margin-bottom: 0.8rem;
+    }
+    .lbf-label {
+      font-size: 0.67rem;
+      color: #666666;
+      margin-bottom: 0.22rem;
+    }
+    .lbf-field {
+      border: 1.5px solid #E2E2E2;
+      border-radius: 7px;
+      padding: 0.45rem 0.6rem;
+      margin-bottom: 0.45rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.75rem;
+      color: #333333;
+      min-height: 34px;
+    }
+    .lbf-ph { color: #CCCCCC; }
+    .lbf-cursor {
+      color: #5B5FEF;
+      font-weight: 300;
+      animation: cursorBlink 0.8s step-end infinite;
+    }
+    @keyframes cursorBlink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+    .lbf-powered {
+      font-size: 0.58rem;
+      color: #CCCCCC;
+      text-align: right;
+      margin-top: 0.2rem;
+    }
+
+    /* ── Код редактор ── */
+    .lbf-code {
+      background: #1E1E1E;
+      flex: 0 0 32vh;
+      overflow: hidden;
+    }
+    .lbf-tab {
+      background: #2D2D2D;
+      padding: 0.55rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .dot {
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .dot-r { background: #FF5F57; }
+    .dot-y { background: #FEBC2E; margin-left: 4px; }
+    .dot-g { background: #28C840; margin-left: 4px; }
+    .lbf-tabname {
+      margin-left: 0.7rem;
+      font-size: 0.72rem;
+      color: #CCCCCC;
+      font-family: 'Courier New', monospace;
+    }
+    .lbf-codebody {
+      padding: 0.75rem 1.4rem;
+      font-family: 'Courier New', monospace;
+      font-size: clamp(0.6rem, 1.1vw, 0.82rem);
+      line-height: 1.85;
+      color: #D4D4D4;
+    }
+    .ck { color: #CE9178; }
+    .ca { color: #9CDCFE; }
+    .cs { color: #CE9178; }
+
+    /* ── Меңзер (custom cursor) ── */
+    .lbf-cursor-dot {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      background: rgba(255,255,255,0.7);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: opacity 0.2s;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="lbf-cursor-dot" id="cursorDot"></div>
+
+  <div class="lbf-title">Login Bag Form</div>
+
+  <div class="lbf-blue" id="blueArea">
+
+    <!-- CSS Кейіпкер -->
+    <div class="lbf-char" id="lbfChar">
+      <div class="lbf-char-inner" id="lbfCharInner">
+        <div class="p-wrap">
+          <!-- Бас -->
+          <div class="p-head">
+            <div class="p-hair"></div>
+            <div class="p-eyes">
+              <div class="p-eye"></div>
+              <div class="p-eye"></div>
+            </div>
+            <div class="p-mouth"></div>
+          </div>
+          <!-- Дене -->
+          <div class="p-body">
+            <div class="p-shirt"></div>
+            <div class="p-tie"></div>
+            <div class="p-arm p-arm-l"></div>
+            <div class="p-arm p-arm-r"></div>
+          </div>
+          <!-- Белбеу -->
+          <div class="p-waist"></div>
+          <!-- Аяқтар -->
+          <div class="p-legs">
+            <div class="p-leg p-leg-l"></div>
+            <div class="p-leg p-leg-r"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Чемодан -->
+    <div class="lbf-bag" id="lbfBag">💼</div>
+
+    <!-- Тіркелу формасы -->
+    <div class="lbf-form-wrap">
+      <div class="lbf-form">
+        <div class="lbf-close">✕</div>
+        <div class="lbf-form-title">Register now</div>
+        <div class="lbf-form-sub">Secure your spot in our upcoming live webinar</div>
+
+        <div class="lbf-label">What's your name? *</div>
+        <div class="lbf-field">
+          <span>👤</span>
+          <span id="lbfTyped"></span><span class="lbf-cursor" id="lbfCursor">|</span>
+        </div>
+        <div class="lbf-field">
+          <span>👥</span><span class="lbf-ph">Surname</span>
+        </div>
+        <div class="lbf-label">Enter your email address *</div>
+        <div class="lbf-field">
+          <span>✉️</span><span class="lbf-ph">Ex. yourname@company.com</span>
+        </div>
+        <div class="lbf-powered">Powered by Visme Forms</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Код редактор -->
+  <div class="lbf-code">
+    <div class="lbf-tab">
+      <span class="dot dot-r"></span>
+      <span class="dot dot-y"></span>
+      <span class="dot dot-g"></span>
+      <span class="lbf-tabname">the_coding_wizard.html</span>
+    </div>
+    <div class="lbf-codebody">
+      <span class="ck">&lt;div</span> <span class="ca">class</span>=<span class="cs">"visme_d"</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="ca">data-title</span>=<span class="cs">"Registration Form"</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="ca">data-url</span>=<span class="cs">"g7ddqxx0-project?fullPage=true"</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="ca">data-domain</span>=<span class="cs">"forms"</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="ca">data-full-page</span>=<span class="cs">"true"</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="ca">data-min-height</span>=<span class="cs">"100vh"</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="ca">data-form-id</span>=<span class="cs">"133190"</span>&gt;<br>
+      <span class="ck">&lt;/div&gt;</span>
+    </div>
+  </div>
+
+  <script>
+    const charEl    = document.getElementById('lbfChar');
+    const charInner = document.getElementById('lbfCharInner');
+    const bagEl     = document.getElementById('lbfBag');
+    const blueEl    = document.getElementById('blueArea');
+    const cursorDot = document.getElementById('cursorDot');
+    const typedEl   = document.getElementById('lbfTyped');
+    const cursorTxt = document.getElementById('lbfCursor');
+
+    let targetX  = 60;
+    let currentX = 60;
+    let walkTimer = null;
+    let lastDir   = 1;
+
+    // Custom cursor dot
+    document.addEventListener('mousemove', (e) => {
+      cursorDot.style.left = e.clientX + 'px';
+      cursorDot.style.top  = e.clientY + 'px';
+    });
+
+    function startWalking() {
+      charEl.classList.add('walking');
+      clearTimeout(walkTimer);
+      walkTimer = setTimeout(() => charEl.classList.remove('walking'), 280);
+    }
+
+    // Кейіпкер мышьке ілеседі
+    blueEl.addEventListener('mousemove', (e) => {
+      const rect  = blueEl.getBoundingClientRect();
+      const charW = charEl.offsetWidth || 70;
+      const rawX  = e.clientX - rect.left - charW * 0.5;
+      const newX  = Math.max(8, Math.min(rawX, rect.width - charW - 8));
+
+      const dir = newX > currentX ? 1 : -1;
+      if (dir !== lastDir) {
+        lastDir = dir;
+        charInner.style.transform = dir === -1 ? 'scaleX(-1)' : 'scaleX(1)';
+      }
+
+      targetX = newX;
+      startWalking();
+    });
+
+    // Smooth lerp loop
+    function animLoop() {
+      const diff = targetX - currentX;
+      if (Math.abs(diff) > 0.4) {
+        currentX += diff * 0.14;
+        charEl.style.left = currentX + 'px';
+        bagEl.style.left  = (currentX + (charEl.offsetWidth || 70) * 0.85) + 'px';
+      }
+      requestAnimationFrame(animLoop);
+    }
+    animLoop();
+
+    // Touch support
+    blueEl.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const rect  = blueEl.getBoundingClientRect();
+      const touch = e.touches[0];
+      const charW = charEl.offsetWidth || 70;
+      const newX  = Math.max(8, Math.min(touch.clientX - rect.left - charW * 0.5, rect.width - charW - 8));
+      const dir   = newX > currentX ? 1 : -1;
+      if (dir !== lastDir) {
+        lastDir = dir;
+        charInner.style.transform = dir === -1 ? 'scaleX(-1)' : 'scaleX(1)';
+      }
+      targetX = newX;
+      startWalking();
+    }, { passive: false });
+
+    // Тайпинг анимациясы
+    const typeText = 'The CodingWizard';
+    let ti = 0;
+    setTimeout(function type() {
+      if (ti <= typeText.length) {
+        typedEl.textContent = typeText.slice(0, ti++);
+        setTimeout(type, 80);
+      } else {
+        setTimeout(() => { cursorTxt.style.display = 'none'; }, 1800);
+      }
+    }, 2200);
+  </script>
+</body>
+</html>

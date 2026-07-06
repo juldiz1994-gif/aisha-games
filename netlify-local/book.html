@@ -1,0 +1,775 @@
+﻿<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ai_aisha_kz — 3D Book</title>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  min-height:100vh;
+  background:radial-gradient(ellipse at 50% 38%,#1e1308 0%,#090603 70%,#040302 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:'DM Sans',sans-serif;
+  overflow:hidden;
+  user-select:none;
+}
+
+/* ── SCENE ── */
+.scene{perspective:1800px;perspective-origin:50% 42%;}
+
+.book{
+  width:740px;height:470px;
+  position:relative;
+  transform-style:preserve-3d;
+  transform:rotateX(5deg);
+  filter:drop-shadow(0 50px 100px rgba(0,0,0,0.95)) drop-shadow(0 18px 40px rgba(0,0,0,0.7));
+}
+
+/* ── STATIC SPREAD (behind flip leaf) ── */
+.spread{
+  position:absolute;inset:0;
+  display:flex;
+  overflow:hidden;
+  border-radius:2px 5px 5px 2px;
+}
+.pg{
+  flex:1;
+  padding:30px 24px;
+  position:relative;
+  overflow:hidden;
+}
+.pg-l{background:linear-gradient(160deg,#100c08,#0e0a06);border-right:1px solid rgba(0,255,65,0.12);}
+.pg-r{background:linear-gradient(160deg,#0c0904,#100e08);}
+
+/* Right page spine shadow */
+.pg-r::before{
+  content:'';position:absolute;top:0;left:0;width:20px;height:100%;
+  background:linear-gradient(to right,rgba(0,0,0,0.25),transparent);pointer-events:none;
+}
+
+/* ── BOOK SPINE ── */
+.spine{
+  position:absolute;left:50%;top:0;
+  width:10px;height:100%;
+  transform:translateX(-50%);
+  background:linear-gradient(to right,#0a0604,#1a0f07,#0a0604);
+  z-index:30;
+  box-shadow:0 0 8px rgba(0,0,0,0.7);
+}
+.spine::after{
+  content:'';position:absolute;
+  left:50%;top:0;
+  width:1px;height:100%;
+  background:linear-gradient(to bottom,transparent,rgba(0,255,65,0.3) 30%,rgba(0,255,65,0.3) 70%,transparent);
+}
+
+/* ── FLIP LEAF ── */
+.flip-leaf{
+  position:absolute;top:0;left:370px;
+  width:370px;height:470px;
+  transform-origin:left center;
+  transform-style:preserve-3d;
+  z-index:20;
+  display:none;
+}
+.lf{
+  position:absolute;inset:0;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+  padding:30px 24px;
+  overflow:hidden;
+}
+.lf-f{background:linear-gradient(160deg,#0c0904,#100e08);}
+.lf-b{background:linear-gradient(160deg,#100c08,#0e0a06);transform:rotateY(180deg);}
+
+/* Leaf shadows */
+.lf-f::before{content:'';position:absolute;top:0;left:0;width:20px;height:100%;
+  background:linear-gradient(to right,rgba(0,0,0,0.3),transparent);pointer-events:none;}
+.lf-b::after{content:'';position:absolute;top:0;right:0;width:20px;height:100%;
+  background:linear-gradient(to left,rgba(0,0,0,0.25),transparent);pointer-events:none;}
+
+/* ── COVER ── */
+.cover{
+  position:absolute;inset:0;
+  z-index:25;
+  transform-style:preserve-3d;
+  transform-origin:left center;
+  transition:transform 1.2s cubic-bezier(0.645,0.045,0.355,1.000);
+  cursor:pointer;
+}
+.cover.open{transform:rotateY(-164deg);pointer-events:none;}
+.cf{
+  position:absolute;inset:0;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  border-radius:2px 5px 5px 2px;
+}
+.cf-front{
+  background:linear-gradient(160deg,#120e06 0%,#1e1308 35%,#120e06 70%,#0e0a05 100%);
+  overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+}
+.cf-back{
+  background:linear-gradient(160deg,#100c08,#0e0a06);
+  transform:rotateY(180deg);
+  padding:30px 24px;
+}
+
+/* ── BOOK BACK ── */
+.book-back{
+  position:absolute;inset:0;
+  background:linear-gradient(160deg,#1a0f05,#0d0804);
+  border:1px solid rgba(0,255,65,0.1);
+  border-radius:2px 5px 5px 2px;
+  z-index:0;
+}
+
+/* ── CLICK ZONES ── */
+.zone{
+  position:absolute;top:0;height:100%;z-index:35;
+  display:flex;align-items:center;
+}
+.zone-l{left:0;width:45%;justify-content:flex-start;cursor:w-resize;}
+.zone-r{right:0;width:45%;justify-content:flex-end;cursor:e-resize;}
+.zone-arr{
+  font-size:1.4rem;
+  color:rgba(0,255,65,0.0);
+  transition:color 0.2s,transform 0.2s;
+  padding:0 14px;
+  pointer-events:none;
+}
+.zone:hover .zone-arr{color:rgba(0,255,65,0.4);transform:scale(1.2);}
+
+/* ══════════════════════════════
+   PAGE CONTENT
+══════════════════════════════ */
+
+.pp{position:relative;height:100%;display:flex;flex-direction:column;}
+
+/* Tag pill */
+.tag{
+  display:inline-block;
+  font-size:0.5rem;font-weight:600;letter-spacing:0.24em;text-transform:uppercase;
+  background:#00FF41;color:#0a0604;
+  padding:2px 9px;border-radius:20px;
+  margin-bottom:10px;align-self:flex-start;
+}
+
+/* Section divider label */
+.sec{
+  font-family:'Cormorant Garamond',serif;
+  font-size:0.72rem;font-weight:700;color:#8B1A1A;
+  text-transform:uppercase;letter-spacing:0.16em;
+  padding-bottom:5px;
+  border-bottom:1px solid rgba(0,255,65,0.35);
+  margin-bottom:10px;
+}
+
+/* Headings */
+.h1{
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.6rem;font-weight:700;
+  color:#e8e0d4;
+  line-height:1.15;margin-bottom:3px;
+}
+.h2{
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.1rem;font-weight:600;
+  color:#d8d0c4;margin-bottom:8px;
+}
+.handle{
+  font-size:0.6rem;letter-spacing:0.1em;
+  color:rgba(0,255,65,0.6);margin-bottom:8px;
+}
+
+/* Divider */
+.div{
+  width:50%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,255,65,0.4),transparent);
+  margin:8px 0;
+}
+
+/* Text */
+.txt{font-size:0.67rem;color:rgba(232,224,212,0.72);line-height:1.65;margin-bottom:8px;}
+.sm{font-size:0.59rem;color:rgba(0,255,65,0.5);line-height:1.6;margin-bottom:6px;}
+
+/* Feature list */
+.fl{list-style:none;margin-bottom:8px;}
+.fl li{
+  font-size:0.64rem;color:rgba(232,224,212,0.78);
+  padding:2.5px 0;display:flex;align-items:center;gap:7px;
+}
+.fl li::before{content:'✦';color:#00FF41;font-size:0.5rem;flex-shrink:0;}
+
+/* Avatar */
+.av{
+  width:64px;height:64px;border-radius:50%;
+  background:linear-gradient(135deg,#00FF41,#70ff90);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.75rem;margin-bottom:8px;
+  box-shadow:0 0 0 2px rgba(0,255,65,0.25),0 4px 14px rgba(0,0,0,0.4);
+  flex-shrink:0;
+}
+
+/* Social */
+.soc{display:flex;gap:7px;margin:6px 0;}
+.soc span{
+  width:25px;height:25px;border-radius:50%;
+  border:1px solid rgba(0,255,65,0.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.68rem;color:rgba(0,255,65,0.6);
+}
+
+/* Buttons */
+.btns{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px;}
+.btn{
+  font-size:0.57rem;font-weight:600;letter-spacing:0.08em;
+  padding:4px 11px;border-radius:20px;cursor:pointer;border:none;white-space:nowrap;
+}
+.btn-g{background:#00FF41;color:#0a0604;}
+.btn-o{background:transparent;border:1px solid rgba(139,26,26,0.8);color:#c04040;}
+
+/* Big emoji icon */
+.bigic{font-size:2.2rem;margin-bottom:6px;}
+
+/* Mini service card */
+.svc{
+  background:rgba(0,255,65,0.05);
+  border:1px solid rgba(0,255,65,0.14);
+  border-radius:6px;padding:7px 9px;margin-bottom:6px;flex-shrink:0;
+}
+.svc .ic{font-size:1.1rem;margin-bottom:2px;}
+.svc .nm{font-family:'Cormorant Garamond',serif;font-size:0.8rem;font-weight:700;color:#e8e0d4;margin-bottom:1px;}
+.svc .ds{font-size:0.58rem;color:rgba(0,255,65,0.5);line-height:1.5;}
+
+/* Contact item */
+.ci{
+  display:flex;align-items:center;gap:9px;
+  padding:7px 9px;border-radius:6px;margin-bottom:6px;
+  border:1px solid rgba(0,255,65,0.13);
+  text-decoration:none;flex-shrink:0;
+}
+.ci .i{font-size:1rem;}
+.ci .la{font-size:0.62rem;font-weight:600;color:#e8e0d4;}
+.ci .su{font-size:0.56rem;color:rgba(0,255,65,0.5);}
+.ci-tg{background:rgba(41,182,246,0.06);}
+.ci-ig{background:rgba(225,48,108,0.05);}
+
+/* Status dot */
+.dot{width:6px;height:6px;border-radius:50%;background:#4caf50;flex-shrink:0;}
+
+/* Page number */
+.pn{
+  position:absolute;bottom:0;
+  font-size:0.5rem;color:rgba(0,255,65,0.35);letter-spacing:0.18em;
+}
+.pn-l{left:0;}
+.pn-r{right:0;}
+
+/* Gold badge row */
+.badge{
+  display:flex;align-items:center;gap:6px;
+  font-size:0.55rem;letter-spacing:0.2em;text-transform:uppercase;
+  color:rgba(0,255,65,0.55);margin-bottom:8px;
+}
+.badge::before{content:'';width:24px;height:1px;background:rgba(0,255,65,0.35);}
+.badge::after{content:'';flex:1;height:1px;background:rgba(0,255,65,0.35);}
+
+/* ── COVER ── */
+.cv-bd{
+  position:absolute;inset:14px;
+  border:1px solid rgba(0,255,65,0.15);
+  border-radius:2px;pointer-events:none;
+}
+.cv-c{position:absolute;border-color:rgba(0,255,65,0.4);border-style:solid;width:13px;height:13px;}
+.cv-tl{top:14px;left:14px;border-width:1.5px 0 0 1.5px;}
+.cv-tr{top:14px;right:14px;border-width:1.5px 1.5px 0 0;}
+.cv-bl{bottom:14px;left:14px;border-width:0 0 1.5px 1.5px;}
+.cv-br{bottom:14px;right:14px;border-width:0 1.5px 1.5px 0;}
+
+/* ── NAVIGATION ── */
+.nav{
+  display:flex;align-items:center;gap:16px;
+  margin-top:20px;
+}
+.nbtn{
+  width:40px;height:40px;border-radius:50%;
+  background:rgba(0,255,65,0.08);
+  border:1.5px solid rgba(0,255,65,0.28);
+  color:#00FF41;font-size:0.95rem;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;outline:none;
+}
+.nbtn:hover:not(:disabled){background:rgba(0,255,65,0.18);border-color:rgba(0,255,65,0.5);transform:scale(1.1);}
+.nbtn:disabled{opacity:0.2;cursor:not-allowed;}
+.nind{
+  font-size:0.58rem;letter-spacing:0.18em;text-transform:uppercase;
+  color:rgba(0,255,65,0.45);min-width:130px;text-align:center;
+}
+
+/* Keyboard hint */
+.kbhint{
+  position:absolute;
+  font-size:0.5rem;letter-spacing:0.18em;
+  color:rgba(0,255,65,0.25);margin-top:6px;
+  text-transform:uppercase;
+}
+
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:.8}}
+@keyframes glow{0%,100%{text-shadow:0 0 20px rgba(0,255,65,0.3)}50%{text-shadow:0 0 40px rgba(0,255,65,0.6),0 0 70px rgba(0,255,65,0.3)}}
+</style>
+</head>
+<body>
+
+<div class="scene">
+  <div class="book" id="book">
+
+    <div class="book-back"></div>
+
+    <!-- Static spread -->
+    <div class="spread">
+      <div class="pg pg-l" id="lD"></div>
+      <div class="pg pg-r" id="rD"></div>
+    </div>
+
+    <!-- Flip leaf -->
+    <div class="flip-leaf" id="fL">
+      <div class="lf lf-f" id="lFf"></div>
+      <div class="lf lf-b" id="lFb"></div>
+    </div>
+
+    <!-- Spine -->
+    <div class="spine"></div>
+
+    <!-- Cover -->
+    <div class="cover" id="cov">
+      <div class="cf cf-front" id="cfF"></div>
+      <div class="cf cf-back"  id="cfB"></div>
+    </div>
+
+    <!-- Click zones -->
+    <div class="zone zone-l" id="zL"><span class="zone-arr">◀</span></div>
+    <div class="zone zone-r" id="zR"><span class="zone-arr">▶</span></div>
+
+  </div>
+</div>
+
+<!-- Nav -->
+<div class="nav">
+  <button class="nbtn" id="pB" disabled>◀</button>
+  <div class="nind" id="nI">Кітапты ашу үшін басыңыз</div>
+  <button class="nbtn" id="nB">▶</button>
+</div>
+<div style="text-align:center">
+  <div class="kbhint">← → пернелері де жұмыс жасайды</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// CONTENT
+// ═══════════════════════════════════════════════
+
+function coverHTML(){return`
+  <div style="position:absolute;width:280px;height:280px;border-radius:50%;
+    background:radial-gradient(circle,rgba(0,255,65,0.06),transparent 70%);
+    top:-60px;right:-60px;filter:blur(40px)"></div>
+  <div style="position:absolute;width:180px;height:180px;border-radius:50%;
+    background:radial-gradient(circle,rgba(0,255,65,0.04),transparent 70%);
+    bottom:-40px;left:-40px;filter:blur(30px)"></div>
+  <div class="cv-bd"></div>
+  <div class="cv-c cv-tl"></div><div class="cv-c cv-tr"></div>
+  <div class="cv-c cv-bl"></div><div class="cv-c cv-br"></div>
+  <div style="text-align:center;z-index:1;padding:22px;position:relative">
+    <div style="font-size:0.48rem;letter-spacing:0.38em;text-transform:uppercase;
+      color:rgba(0,255,65,0.38);margin-bottom:18px">AI · STUDIO · KAZAKHSTAN</div>
+    <div style="width:40px;height:1px;background:linear-gradient(90deg,transparent,rgba(0,255,65,0.38),transparent);margin:0 auto 16px"></div>
+    <div style="font-family:'Dancing Script',cursive;font-size:4rem;font-weight:700;
+      color:#00FF41;line-height:1;
+      text-shadow:0 0 20px rgba(0,255,65,0.45),0 0 50px rgba(0,255,65,0.22);
+      animation:glow 3s ease-in-out infinite">ai_aisha_kz</div>
+    <div style="width:140px;height:1px;background:linear-gradient(90deg,transparent,rgba(0,255,65,0.45),transparent);margin:16px auto"></div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:0.92rem;font-style:italic;
+      color:rgba(0,255,65,0.5);letter-spacing:0.06em">Жасанды Интеллект Студиясы</div>
+    <div style="margin-top:20px;font-size:0.48rem;letter-spacing:0.26em;color:rgba(0,255,65,0.28)">✦ &nbsp; 2024 &nbsp; ✦</div>
+    <div style="margin-top:26px;font-size:0.52rem;letter-spacing:0.2em;text-transform:uppercase;
+      color:rgba(0,255,65,0.35);animation:pulse 2.2s infinite">АШУ ҮШІН БАСЫҢЫЗ ▶</div>
+  </div>
+`;}
+
+function insideCover(){return`
+  <div class="pp" style="align-items:center;justify-content:center;text-align:center">
+    <div style="font-size:0.5rem;letter-spacing:0.3em;color:rgba(0,255,65,0.4);text-transform:uppercase;margin-bottom:14px">AISHA.AI</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:1.45rem;color:#e8e0d4;margin-bottom:8px">Қош келдіңіз!</div>
+    <div class="div" style="width:60px;margin:0 auto 12px"></div>
+    <p class="sm" style="text-align:center;max-width:200px">Жасанды Интеллект Студиясына қош келдіңіз</p>
+    <div style="margin-top:14px;font-family:'Dancing Script',cursive;font-size:1.1rem;color:#00FF41">ai_aisha_kz</div>
+  </div>
+`;}
+
+// ── SPREADS ── (left, right)
+const S=[
+
+  // 1 — Hero welcome
+  {l:`
+    <div class="pp">
+      <div class="badge">ЖИ · AI STUDIO · 2024</div>
+      <div class="h1" style="font-size:1.45rem">Айшаның<br><em style="color:#00FF41">Жасанды</em><br>Интеллект<br>Студиясына</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:1rem;color:#c04040;margin-top:4px;margin-bottom:10px">қош келдіңіз</div>
+      <div class="div"></div>
+      <p class="txt">AI технологиясы арқылы бизнесіңізді жаңа деңгейге шығарыңыз.</p>
+      <div class="btns">
+        <span class="btn btn-g">Қызметтерді көру</span>
+        <span class="btn btn-o">Байланысу</span>
+      </div>
+      <div class="pn pn-l">◀&nbsp;1</div>
+    </div>
+  `,r:`
+    <div class="pp" style="justify-content:center">
+      <div style="font-size:1.8rem;color:rgba(0,255,65,0.2);font-family:'Cormorant Garamond',serif;font-style:italic;line-height:1.5;margin-bottom:14px">
+        "кәсіби<br>видеолардан<br>бастап ақылды<br>чат-боттарға<br>дейін"
+      </div>
+      <div class="div" style="width:70px"></div>
+      <p class="sm" style="margin-top:8px">AI технологиясы арқылы бизнесіңізді жаңа деңгейге шығарамыз.</p>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:10px">
+        <span class="dot"></span>
+        <span class="sm" style="margin-bottom:0">Дүйсенбі – Жексенбі: 09:00 – 21:00</span>
+      </div>
+      <div class="pn pn-r">2&nbsp;▶</div>
+    </div>
+  `},
+
+  // 2 — Profile + About
+  {l:`
+    <div class="pp">
+      <div class="tag">ПРОФИЛЬ</div>
+      <div class="av">✨</div>
+      <div class="h1" style="font-size:1.5rem">Айша</div>
+      <div class="handle">@ai_aisha_kz · AI Studio · KZ</div>
+      <div class="div"></div>
+      <p class="txt">AI технологиясы арқылы бизнесіңізді жаңа деңгейге шығарамыз. Кәсіби видеолар мен ақылды чат-боттар.</p>
+      <div class="soc"><span>📷</span><span>✈️</span><span>🌐</span></div>
+      <div class="btns">
+        <span class="btn btn-g">Instagram</span>
+        <span class="btn btn-o">Telegram</span>
+      </div>
+      <div class="pn pn-l">◀&nbsp;3</div>
+    </div>
+  `,r:`
+    <div class="pp">
+      <div class="sec">Не ұсынамыз?</div>
+      <div class="svc">
+        <div class="ic">🎬</div>
+        <div class="nm">AI арқылы видео жасау</div>
+        <div class="ds">Кәсіби видеолар, рекламалар, презентациялар</div>
+      </div>
+      <div class="svc">
+        <div class="ic">🤖</div>
+        <div class="nm">Чат-бот орнату</div>
+        <div class="ds">Telegram, WhatsApp, Instagram — кез келген платформа</div>
+      </div>
+      <div class="div"></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="dot"></span>
+        <span class="sm" style="margin-bottom:0">Дүйсенбі – Жексенбі · 09:00 – 21:00</span>
+      </div>
+      <div class="pn pn-r">4&nbsp;▶</div>
+    </div>
+  `},
+
+  // 3 — AI Video
+  {l:`
+    <div class="pp">
+      <div class="sec">Қызмет 01</div>
+      <div class="bigic">🎬</div>
+      <div class="h2">AI арқылы видео жасау</div>
+      <p class="txt">Жасанды интеллект көмегімен кәсіби видеолар, рекламалар және презентациялар жасаймыз. Жылдам, сапалы, тиімді баға.</p>
+      <div class="div"></div>
+      <ul class="fl">
+        <li>Сценарий жазу</li>
+        <li>AI дауыс + бейне генерация</li>
+        <li>Кез келген тіл мен стиль</li>
+        <li>Монтаж және өңдеу</li>
+      </ul>
+      <div class="btns" style="margin-top:auto">
+        <span class="btn btn-g">Тапсырыс беру →</span>
+      </div>
+      <div class="pn pn-l">◀&nbsp;5</div>
+    </div>
+  `,r:`
+    <div class="pp" style="justify-content:center">
+      <div style="font-size:0.55rem;letter-spacing:0.22em;color:rgba(0,255,65,0.4);text-transform:uppercase;margin-bottom:14px">Неліктен біз?</div>
+      <ul class="fl" style="margin-bottom:14px">
+        <li>Жылдам орындалу</li>
+        <li>Тиімді баға</li>
+        <li>Кез келген тіл</li>
+        <li>Кәсіби сапа</li>
+        <li>Тез жеткізу</li>
+      </ul>
+      <div class="div"></div>
+      <div style="margin-top:10px;font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:rgba(0,255,65,0.45);font-style:italic">
+        "Жылдам, сапалы,<br>тиімді баға"
+      </div>
+      <div class="pn pn-r">6&nbsp;▶</div>
+    </div>
+  `},
+
+  // 4 — Chatbot
+  {l:`
+    <div class="pp">
+      <div class="sec">Қызмет 02</div>
+      <div class="bigic">🤖</div>
+      <div class="h2">Чат-бот орнату</div>
+      <p class="txt">Бизнесіңіз үшін ақылды чат-бот жасаймыз. Telegram, WhatsApp, Instagram — кез келген платформада жұмыс жасайды.</p>
+      <div class="div"></div>
+      <ul class="fl">
+        <li>Telegram боты</li>
+        <li>WhatsApp боты</li>
+        <li>AI автоматты жауаптар</li>
+        <li>Admin панель</li>
+      </ul>
+      <div class="btns" style="margin-top:auto">
+        <span class="btn btn-o">Тапсырыс беру →</span>
+      </div>
+      <div class="pn pn-l">◀&nbsp;7</div>
+    </div>
+  `,r:`
+    <div class="pp" style="justify-content:center">
+      <div style="font-size:0.55rem;letter-spacing:0.22em;color:rgba(0,255,65,0.4);text-transform:uppercase;margin-bottom:14px">Платформалар</div>
+      <ul class="fl" style="margin-bottom:14px">
+        <li>Telegram</li>
+        <li>WhatsApp</li>
+        <li>Instagram DM</li>
+        <li>AI автожауаптар</li>
+        <li>24/7 жұмыс</li>
+      </ul>
+      <div class="div"></div>
+      <div style="margin-top:10px;font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:rgba(0,255,65,0.45);font-style:italic">
+        "Бизнесіңіз<br>ұйықтамайды"
+      </div>
+      <div class="pn pn-r">8&nbsp;▶</div>
+    </div>
+  `},
+
+  // 5 — Contact + Thanks
+  {l:`
+    <div class="pp">
+      <div class="sec">Байланыс</div>
+      <div class="h2">Хабарласыңыз</div>
+      <p class="txt">Telegram немесе Instagram арқылы хабарласыңыз. Жауабымыз жылдам!</p>
+      <div class="div"></div>
+      <a class="ci ci-tg" href="https://t.me/+e9V00D-EATpkYjQy" target="_blank">
+        <span class="i">✈️</span>
+        <div><div class="la">Telegram</div><div class="su">Чатқа жазу</div></div>
+        <span style="margin-left:auto;font-size:0.65rem;color:rgba(0,255,65,0.4)">→</span>
+      </a>
+      <a class="ci ci-ig" href="https://www.instagram.com/ai_aisha_kz" target="_blank">
+        <span class="i">📷</span>
+        <div><div class="la">Instagram</div><div class="su">@ai_aisha_kz</div></div>
+        <span style="margin-left:auto;font-size:0.65rem;color:rgba(0,255,65,0.4)">→</span>
+      </a>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:8px">
+        <span class="dot"></span>
+        <span class="sm" style="margin-bottom:0">Дүйсенбі – Жексенбі: 09:00 – 21:00</span>
+      </div>
+      <div class="pn pn-l">◀&nbsp;9</div>
+    </div>
+  `,r:`
+    <div class="pp" style="align-items:center;justify-content:center;text-align:center">
+      <div style="font-size:2.4rem;margin-bottom:10px">✨</div>
+      <div style="font-family:'Dancing Script',cursive;font-size:2.2rem;color:#00FF41;margin-bottom:6px;
+        text-shadow:0 0 16px rgba(0,255,65,0.4)">Рахмет!</div>
+      <div class="div" style="width:80px;margin:8px auto 12px"></div>
+      <p class="sm" style="max-width:190px;text-align:center;margin:0 auto 14px">Бізді таңдағаныңызға рахмет. Жақын арада хабарласамыз!</p>
+      <div style="font-family:'Dancing Script',cursive;font-size:1.2rem;color:rgba(0,255,65,0.7)">ai_aisha_kz</div>
+      <div style="margin-top:5px;font-size:0.48rem;letter-spacing:0.22em;color:rgba(0,255,65,0.3)">AI STUDIO · KZ · 2024</div>
+      <div class="pn pn-r">10</div>
+    </div>
+  `},
+
+];
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+
+let idx    = -1;   // current spread (-1 = cover)
+let animOn = false;
+let isOpen = false;
+
+const lD  = document.getElementById('lD');
+const rD  = document.getElementById('rD');
+const fL  = document.getElementById('fL');
+const lFf = document.getElementById('lFf');
+const lFb = document.getElementById('lFb');
+const cov = document.getElementById('cov');
+const cfF = document.getElementById('cfF');
+const cfB = document.getElementById('cfB');
+const pB  = document.getElementById('pB');
+const nB  = document.getElementById('nB');
+const nI  = document.getElementById('nI');
+const zL  = document.getElementById('zL');
+const zR  = document.getElementById('zR');
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+
+cfF.innerHTML = coverHTML();
+cfB.innerHTML = insideCover();
+
+lD.innerHTML = S[0].l;
+rD.innerHTML = S[0].r;
+
+updNav();
+
+// ═══════════════════════════════════════════════
+// OPEN BOOK
+// ═══════════════════════════════════════════════
+
+function openBook(){
+  if(isOpen||animOn) return;
+  isOpen=true; animOn=true; idx=0;
+  cov.classList.add('open');
+  setTimeout(()=>{ animOn=false; updNav(); },1200);
+}
+
+// ═══════════════════════════════════════════════
+// FORWARD FLIP
+// ═══════════════════════════════════════════════
+
+function fwd(){
+  if(animOn||idx>=S.length-1) return;
+  if(!isOpen){ openBook(); return; }
+  animOn=true;
+  const n=idx+1;
+
+  lFf.innerHTML = S[idx].r;
+  lFb.innerHTML = S[n].l;
+  rD.innerHTML  = S[n].r;   // pre-load next right (hidden under leaf)
+
+  fL.style.display='block';
+  fL.style.transition='none';
+  fL.style.transform='rotateY(0deg)';
+  void fL.offsetWidth;
+
+  fL.style.transition='transform .72s cubic-bezier(.645,.045,.355,1)';
+  fL.style.transform='rotateY(-180deg)';
+
+  setTimeout(()=>{
+    idx=n;
+    lD.innerHTML=S[idx].l;
+    fL.style.display='none';
+    animOn=false;
+    updNav();
+  },720);
+}
+
+// ═══════════════════════════════════════════════
+// BACKWARD FLIP
+// ═══════════════════════════════════════════════
+
+function bwd(){
+  if(animOn||idx<=0) return;
+  animOn=true;
+  const p=idx-1;
+
+  lFf.innerHTML = S[p].r;
+  lFb.innerHTML = S[idx].l;
+  lD.innerHTML  = S[p].l;   // pre-load prev left (hidden under leaf back)
+
+  fL.style.display='block';
+  fL.style.transition='none';
+  fL.style.transform='rotateY(-180deg)';
+  void fL.offsetWidth;
+
+  fL.style.transition='transform .72s cubic-bezier(.645,.045,.355,1)';
+  fL.style.transform='rotateY(0deg)';
+
+  setTimeout(()=>{
+    idx=p;
+    rD.innerHTML=S[idx].r;
+    fL.style.display='none';
+    animOn=false;
+    updNav();
+  },720);
+}
+
+// ═══════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════
+
+function updNav(){
+  if(!isOpen){
+    pB.disabled=true;
+    nB.disabled=false;
+    nI.textContent='Кітапты ашу үшін ▶ басыңыз';
+    return;
+  }
+  pB.disabled=idx<=0;
+  nB.disabled=idx>=S.length-1;
+  nI.textContent=`${idx*2+1}–${idx*2+2} / ${S.length*2} бет`;
+}
+
+// ═══════════════════════════════════════════════
+// EVENTS
+// ═══════════════════════════════════════════════
+
+nB.addEventListener('click',()=>{ if(!isOpen) openBook(); else fwd(); });
+pB.addEventListener('click', bwd);
+
+// Click zones on book
+zR.addEventListener('click', e=>{
+  if(e.target.closest('a')) return;
+  if(!isOpen) openBook(); else fwd();
+});
+zL.addEventListener('click', e=>{
+  if(e.target.closest('a')) return;
+  bwd();
+});
+
+// Cover click
+cfF.addEventListener('click', openBook);
+
+// Keyboard
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowRight'||e.key==='ArrowDown'){ e.preventDefault(); if(!isOpen) openBook(); else fwd(); }
+  if(e.key==='ArrowLeft' ||e.key==='ArrowUp'){   e.preventDefault(); bwd(); }
+});
+window.GAME_TYPE  = 'book';
+window.GAME_TITLE = 'Кітап';
+window.getGameConfig  = () => ({ title: '3D Кітап', pages: [] });
+window.setGameConfig  = function(cfg){
+  if(!cfg || !cfg.pages || !cfg.pages.length) return;
+  const pages = cfg.pages.slice(0, 30);
+
+  function pgHTML(src, n){
+    return `<div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#080604;padding:4px">` +
+      `<img src="${src}" style="max-width:100%;max-height:100%;object-fit:contain;display:block">` +
+      `<div style="position:absolute;bottom:5px;right:8px;font-size:0.45rem;color:rgba(0,255,65,0.3);font-family:monospace">${n}</div>` +
+      `</div>`;
+  }
+
+  // Rebuild S array with PDF pages
+  S.length = 0;
+  for(let i = 0; i < pages.length; i += 2){
+    S.push({
+      l: pgHTML(pages[i], i + 1),
+      r: pages[i+1] ? pgHTML(pages[i+1], i + 2) : '<div style="width:100%;height:100%;background:#060402"></div>'
+    });
+  }
+
+  // Reset book to closed state
+  idx    = -1;
+  isOpen = false;
+  animOn = false;
+  lD.innerHTML = S[0].l;
+  rD.innerHTML = S[0].r;
+  updNav();
+};
+</script>
+<script src="game-edit.js"></script>
+</body>
+</html>
+

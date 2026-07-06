@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Special Message</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold: #D4AF37;
+      --gold-light: #F0CC50;
+      --gold-dim: #9A7B1A;
+    }
+
+    body {
+      min-height: 100vh;
+      background: #0D0907;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      font-family: 'Poppins', sans-serif;
+      transition: background 1.2s ease;
+    }
+
+    /* ── Фон жүрек ── */
+    .heart-bg {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .heart-svg {
+      width: min(80vw, 80vh);
+      height: min(80vw, 80vh);
+      opacity: 0.18;
+      transition: opacity 1.2s ease, filter 1.2s ease;
+      filter: drop-shadow(0 0 0px #8B0000);
+    }
+
+    body.loved .heart-svg {
+      opacity: 0.55;
+      filter: drop-shadow(0 0 60px rgba(180, 20, 20, 0.6));
+      animation: heartbeat 1.6s ease-in-out infinite;
+    }
+
+    @keyframes heartbeat {
+      0%, 100% { transform: scale(1); }
+      30%       { transform: scale(1.06); }
+      60%       { transform: scale(0.97); }
+    }
+
+    /* ── Контент ── */
+    .content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      padding: 2rem;
+      max-width: 90vw;
+    }
+
+    /* ── Сұрақ мәтін ── */
+    .question {
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(1.8rem, 6.5vw, 4.2rem);
+      color: var(--gold);
+      line-height: 1.5;
+      min-height: 2.5em;
+      text-shadow:
+        0 0 18px rgba(212, 175, 55, 0.35),
+        0 0 50px rgba(212, 175, 55, 0.12);
+      margin-bottom: 2.5rem;
+      transition: opacity 0.5s;
+    }
+
+    .type-cursor {
+      display: inline-block;
+      color: var(--gold);
+      margin-left: 2px;
+      animation: curBlink 0.75s step-end infinite;
+    }
+    @keyframes curBlink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    /* ── Батырмалар ── */
+    .buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+      pointer-events: none;
+    }
+    .buttons.show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .btn {
+      padding: 0.65rem 2.2rem;
+      border: none;
+      border-radius: 50px;
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(0.9rem, 2.5vw, 1.05rem);
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      transition: transform 0.18s, box-shadow 0.18s;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      transition: background 0.2s;
+    }
+    .btn:hover::after { background: rgba(255,255,255,0.1); }
+    .btn:active { transform: scale(0.96) !important; }
+
+    .btn-mau {
+      background: linear-gradient(135deg, #B8960C 0%, #D4AF37 50%, #B8960C 100%);
+      color: #1A0E00;
+      box-shadow: 0 4px 20px rgba(180, 150, 20, 0.3);
+    }
+    .btn-mau:hover {
+      transform: translateY(-3px) scale(1.04);
+      box-shadow: 0 8px 28px rgba(212, 175, 55, 0.5);
+    }
+
+    .btn-banget {
+      background: linear-gradient(135deg, #C8A828 0%, #F0D060 50%, #C8A828 100%);
+      color: #1A0E00;
+      box-shadow: 0 4px 20px rgba(200, 168, 40, 0.3);
+    }
+    .btn-banget:hover {
+      transform: translateY(-3px) scale(1.04);
+      box-shadow: 0 8px 28px rgba(240, 208, 80, 0.55);
+    }
+
+    /* ── "I Love You" хабарлама ── */
+    .love-section {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+      animation: loveIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+    @keyframes loveIn {
+      from { opacity: 0; transform: scale(0.7); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .love-title {
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(2.2rem, 8vw, 5rem);
+      color: var(--gold);
+      text-shadow:
+        0 0 25px rgba(212, 175, 55, 0.6),
+        0 0 70px rgba(212, 175, 55, 0.2);
+      line-height: 1.2;
+    }
+
+    .love-sub {
+      font-size: clamp(0.85rem, 2.5vw, 1rem);
+      color: var(--gold-dim);
+      letter-spacing: 0.04em;
+      margin-top: 0.3rem;
+    }
+
+    /* Жүрек конфетти */
+    .hearts-container {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      overflow: hidden;
+    }
+    .floating-heart {
+      position: absolute;
+      font-size: 1.5rem;
+      animation: floatUp 3s ease-out forwards;
+      opacity: 0;
+    }
+    @keyframes floatUp {
+      0%   { opacity: 1; transform: translateY(0) scale(1) rotate(var(--rot)); }
+      100% { opacity: 0; transform: translateY(-80vh) scale(0.5) rotate(calc(var(--rot) + 30deg)); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Фон жүрек -->
+  <div class="heart-bg">
+    <svg class="heart-svg" viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg">
+      <path d="M50 85 C50 85 5 55 5 28 C5 14 16 5 28 5 C37 5 44 10 50 18 C56 10 63 5 72 5 C84 5 95 14 95 28 C95 55 50 85 50 85Z" fill="#6B0000"/>
+    </svg>
+  </div>
+
+  <!-- Конфетти контейнер -->
+  <div class="hearts-container" id="heartsContainer"></div>
+
+  <!-- Контент -->
+  <div class="content">
+
+    <!-- Сұрақ -->
+    <div class="question" id="questionEl">
+      <span class="type-cursor" id="typeCur">|</span>
+    </div>
+
+    <!-- Батырмалар -->
+    <div class="buttons" id="btnsEl">
+      <button class="btn btn-mau" onclick="accept()">Mau</button>
+      <button class="btn btn-banget" onclick="accept()">Mau Banget! 🧡</button>
+    </div>
+
+    <!-- "I Love You" -->
+    <div class="love-section" id="loveSec">
+      <div class="love-title" id="loveTitleEl"></div>
+      <div class="love-sub">Semoga kita langgeng, ya 🫶</div>
+    </div>
+
+  </div>
+
+  <script>
+    // Атты URL параметрінен аламыз: ?name=Desi
+    const params = new URLSearchParams(location.search);
+    const name = params.get('name') || 'Desi';
+
+    const questionEl  = document.getElementById('questionEl');
+    const typeCur     = document.getElementById('typeCur');
+    const btnsEl      = document.getElementById('btnsEl');
+    const loveSec     = document.getElementById('loveSec');
+    const loveTitleEl = document.getElementById('loveTitleEl');
+    const heartsCont  = document.getElementById('heartsContainer');
+
+    const fullText = `Mau kah jadi pacarku, ${name}?`;
+    let i = 0;
+
+    // Typing animation
+    setTimeout(function typeChar() {
+      if (i <= fullText.length) {
+        questionEl.innerHTML =
+          fullText.slice(0, i++) +
+          '<span class="type-cursor" id="typeCur">|</span>';
+        const delay = i < 22 ? 85 : 65;
+        setTimeout(typeChar, delay);
+      } else {
+        document.getElementById('typeCur').style.display = 'none';
+        setTimeout(() => btnsEl.classList.add('show'), 400);
+      }
+    }, 900);
+
+    function accept() {
+      // Жауапты жасыру
+      btnsEl.style.pointerEvents = 'none';
+      btnsEl.style.opacity = '0';
+      questionEl.style.opacity = '0';
+
+      // Фонды өзгерту
+      document.body.classList.add('loved');
+      document.body.style.background = '#110608';
+
+      // "I Love You" хабарламасы
+      setTimeout(() => {
+        loveTitleEl.textContent = `I Love You ${name}! ❤️`;
+        loveSec.style.display = 'flex';
+        spawnHearts();
+      }, 600);
+    }
+
+    function spawnHearts() {
+      const emojis = ['❤️', '🧡', '💛', '💕', '💖', '💗', '✨'];
+      let count = 0;
+      const interval = setInterval(() => {
+        if (count++ > 30) { clearInterval(interval); return; }
+        const el = document.createElement('div');
+        el.className = 'floating-heart';
+        el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        el.style.left = Math.random() * 100 + 'vw';
+        el.style.bottom = '-2rem';
+        el.style.setProperty('--rot', (Math.random() * 40 - 20) + 'deg');
+        el.style.animationDelay = Math.random() * 0.5 + 's';
+        el.style.fontSize = (1 + Math.random() * 1.5) + 'rem';
+        heartsCont.appendChild(el);
+        setTimeout(() => el.remove(), 3500);
+      }, 120);
+    }
+  </script>
+</body>
+</html>

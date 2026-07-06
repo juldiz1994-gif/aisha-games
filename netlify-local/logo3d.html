@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ai_aisha_kz — 3D Logo</title>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      margin: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #c8ccd4;
+    }
+
+    .reel { display: contents; }
+    .reel-head { display: none; }
+    .comment-badge { display: none; }
+
+    /* ── 3D Preview ── */
+    .reel-preview {
+      position: fixed;
+      inset: 0;
+      background: #c8ccd4;
+    }
+    #threeCanvas {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+
+    /* ── Код редактор ── */
+    .code-editor { display: none; }
+    .code-editor {
+      margin: 0.5rem 0.9rem 0.7rem;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1.5px solid #2e3250;
+      background: #151820;
+    }
+    .ce-tabs {
+      display: flex;
+      align-items: center;
+      background: #1e2235;
+      padding: 0.4rem 0.7rem;
+      gap: 0.5rem;
+      border-bottom: 1px solid #2e3250;
+    }
+    .ce-dots { display: flex; gap: 4px; }
+    .dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+    }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; }
+    .ce-tabname {
+      font-size: 0.7rem;
+      color: #c8ccdc;
+      font-weight: 600;
+      margin-left: 0.3rem;
+    }
+    .ce-body {
+      padding: 0.7rem 0.9rem;
+      font-size: 0.62rem;
+      line-height: 1.65;
+      overflow-x: auto;
+    }
+    .ce-body code {
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      white-space: pre;
+    }
+    .ck  { color: #569cd6; }
+    .cs  { color: #ce9178; }
+    .cc  { color: #57a64a; }
+    .cn  { color: #9cdcfe; }
+    .cm  { color: #c586c0; }
+    .cv  { color: #4ec9b0; }
+
+    /* ── Footer ── */
+    .reel-footer { display: none; }
+    .reel-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 1.1rem 0.9rem;
+      border-top: 1px solid #2e3250;
+    }
+    .fp-profile {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+    .fp-avatar {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #D4AF37, #fff8e1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      border: 2px solid #D4AF37;
+    }
+    .fp-name {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #e8eaf0;
+      letter-spacing: 0.03em;
+    }
+    .fp-actions {
+      display: flex;
+      gap: 1.1rem;
+    }
+    .fp-action {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      color: #c8ccdc;
+    }
+    .fp-action svg { width: 18px; height: 18px; }
+    .fp-action span {
+      font-size: 0.55rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+  </style>
+</head>
+<body>
+
+<div class="reel">
+
+  <!-- Тақырып -->
+  <div class="reel-head">
+    <p class="reel-h1">ai_aisha_kz 3D logo animation</p>
+    <p class="reel-h2">Using HTML CSS JS</p>
+  </div>
+
+  <!-- 3D Preview -->
+  <div class="reel-preview" id="previewBox">
+    <canvas id="threeCanvas"></canvas>
+    <div class="comment-badge">Comment "AI" for code</div>
+  </div>
+
+  <!-- Footer -->
+  <div class="reel-footer">
+    <div class="fp-profile">
+      <div class="fp-avatar">✨</div>
+      <span class="fp-name">AI_AISHA_KZ</span>
+    </div>
+    <div class="fp-actions">
+      <div class="fp-action">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+        <span>LIKE</span>
+      </div>
+      <div class="fp-action">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>SAVE</span>
+      </div>
+      <div class="fp-action">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+          <polyline points="16 6 12 2 8 6"/>
+          <line x1="12" y1="2" x2="12" y2="15"/>
+        </svg>
+        <span>SHARE</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Text pixel sampling ──
+function sampleTextPositions(text) {
+  const W = 600, H = 90;
+  const oc = document.createElement('canvas');
+  oc.width = W; oc.height = H;
+  const ox = oc.getContext('2d');
+  ox.fillStyle = '#000';
+  ox.fillRect(0, 0, W, H);
+  ox.fillStyle = '#fff';
+  ox.font = 'bold 62px Arial';
+  ox.textAlign = 'center';
+  ox.textBaseline = 'middle';
+  ox.fillText(text, W / 2, H / 2);
+  const data = ox.getImageData(0, 0, W, H).data;
+  const pts  = [];
+  const step = 6;
+  for (let y = 0; y < H; y += step) {
+    for (let x = 0; x < W; x += step) {
+      if (data[(y * W + x) * 4] > 128) {
+        pts.push(new THREE.Vector3(
+          (x - W / 2) / 28,
+          -(y - H / 2) / 28,
+          0
+        ));
+      }
+    }
+  }
+  return pts;
+}
+
+// ── Three.js setup ──
+const preview  = document.getElementById('previewBox');
+const canvas   = document.getElementById('threeCanvas');
+const W0 = preview.clientWidth;
+const H0 = preview.clientHeight;
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(W0, H0);
+renderer.setClearColor(0xc8ccd4);
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, W0 / H0, 0.1, 200);
+camera.position.set(0, 1.5, 16);
+camera.lookAt(0, 0, 0);
+
+// Lights
+const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambient);
+const dirA = new THREE.DirectionalLight(0xffffff, 0.9);
+dirA.position.set(5, 8, 6);
+scene.add(dirA);
+const dirB = new THREE.DirectionalLight(0xaaaaff, 0.3);
+dirB.position.set(-5, -3, -4);
+scene.add(dirB);
+
+// ── Cubes ──
+const targets = sampleTextPositions('ai_aisha_kz');
+const geoBox  = new THREE.BoxGeometry(0.22, 0.22, 0.22);
+const matGray = new THREE.MeshStandardMaterial({ color: 0xaab0bc, metalness: 0.3, roughness: 0.5 });
+const matRed  = new THREE.MeshStandardMaterial({ color: 0xcc2233, metalness: 0.2, roughness: 0.4 });
+const matGold = new THREE.MeshStandardMaterial({ color: 0xD4AF37, metalness: 0.4, roughness: 0.3 });
+
+const cubes        = [];
+const scatterPoses = [];
+const redIdx       = Math.floor(targets.length * 0.5);
+const goldIdx      = Math.floor(targets.length * 0.25);
+
+targets.forEach((t, i) => {
+  const mat  = i === redIdx ? matRed : (i === goldIdx ? matGold : matGray);
+  const cube = new THREE.Mesh(geoBox, mat);
+  const sp   = new THREE.Vector3(
+    (Math.random() - 0.5) * 18,
+    (Math.random() - 0.5) * 10,
+    (Math.random() - 0.5) * 10
+  );
+  cube.position.copy(sp);
+  cube.rotation.set(
+    Math.random() * Math.PI * 2,
+    Math.random() * Math.PI * 2,
+    Math.random() * Math.PI * 2
+  );
+  cube.userData.target  = t;
+  cube.userData.scatter = sp.clone();
+  scatterPoses.push(sp);
+  scene.add(cube);
+  cubes.push(cube);
+});
+
+// ── Animation state machine ──
+// PHASE: 0=scatter 1=assembling 2=hold 3=disassembling
+let phase     = 0;
+let phaseTime = 0;
+
+const PHASE_DUR = [1.2, 1.8, 2.2, 1.6]; // seconds per phase
+
+let camAngle = 0;
+const clock  = new THREE.Clock();
+
+function lerp3(cube, from, to, t) {
+  cube.position.lerpVectors(from, to, t);
+}
+
+function easeInOut(t) {
+  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const dt = clock.getDelta();
+  phaseTime += dt;
+  const dur = PHASE_DUR[phase];
+  const progress = Math.min(phaseTime / dur, 1);
+  const eased    = easeInOut(progress);
+
+  cubes.forEach((c, i) => {
+    const tgt = c.userData.target;
+    const sct = c.userData.scatter;
+
+    if (phase === 0) {
+      // Scattered — idle rotation
+      c.rotation.x += dt * 0.4;
+      c.rotation.y += dt * 0.3;
+    } else if (phase === 1) {
+      // Assembling
+      lerp3(c, sct, tgt, eased);
+      c.rotation.x += dt * (1 - eased) * 1.2;
+      c.rotation.y += dt * (1 - eased) * 0.8;
+    } else if (phase === 2) {
+      // Assembled — completely still
+      c.position.copy(tgt);
+      c.rotation.x = 0;
+      c.rotation.y = 0;
+      c.rotation.z = 0;
+    } else if (phase === 3) {
+      // Disassembling
+      lerp3(c, tgt, sct, eased);
+      c.rotation.x += dt * eased * 1.2;
+      c.rotation.y += dt * eased * 0.9;
+    }
+  });
+
+  if (progress >= 1 && phase < 2) {
+    phaseTime = 0;
+    phase = phase + 1;
+  }
+
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// Resize
+window.addEventListener('resize', () => {
+  const pw = preview.clientWidth;
+  const ph = preview.clientHeight;
+  camera.aspect = pw / ph;
+  camera.updateProjectionMatrix();
+  renderer.setSize(pw, ph);
+});
+window.GAME_TYPE  = 'logo3d';
+window.GAME_TITLE = '3D Логотип';
+
+let LOGO_STUDENTS = [];
+let logoStudentIdx = 0;
+
+function setLogoText(text){
+  const newTargets = sampleTextPositions(text.toUpperCase());
+  // Кубтардың санын реттейміз
+  const diff = newTargets.length - cubes.length;
+  if(diff > 0){
+    for(let i=0; i<diff; i++){
+      const mat = matGray;
+      const cube = new THREE.Mesh(geoBox, mat);
+      const sp = new THREE.Vector3(
+        (Math.random()-0.5)*18, (Math.random()-0.5)*10, (Math.random()-0.5)*10
+      );
+      cube.position.copy(sp);
+      cube.userData.scatter = sp.clone();
+      scene.add(cube);
+      cubes.push(cube);
+    }
+  }
+  newTargets.forEach((t,i)=>{ if(cubes[i]) cubes[i].userData.target = t; });
+  for(let i=newTargets.length; i<cubes.length; i++){
+    cubes[i].userData.target = new THREE.Vector3(
+      (Math.random()-0.5)*18, (Math.random()-0.5)*10, -20
+    );
+  }
+  phase = 0; phaseTime = 0;
+}
+
+window.getGameConfig  = () => ({ title: '3D Логотип', students: LOGO_STUDENTS.slice() });
+window.setGameConfig  = function(cfg){
+  if(cfg && cfg.students && cfg.students.length){
+    LOGO_STUDENTS = cfg.students;
+    logoStudentIdx = 0;
+    setLogoText(LOGO_STUDENTS[0] || 'ai_aisha_kz');
+    // Кезекті ат батырмасын көрсету
+    showLogoNextBtn();
+  }
+};
+
+function showLogoNextBtn(){
+  if(LOGO_STUDENTS.length < 2) return;
+  if(document.getElementById('logo-next-btn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'logo-next-btn';
+  btn.textContent = '▶ Келесі';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:50;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:10px 24px;border-radius:50px;font-size:0.88rem;font-weight:700;cursor:pointer;letter-spacing:0.06em;';
+  btn.onclick = ()=>{
+    logoStudentIdx = (logoStudentIdx+1) % LOGO_STUDENTS.length;
+    setLogoText(LOGO_STUDENTS[logoStudentIdx]);
+  };
+  document.body.appendChild(btn);
+}
+</script>
+<script src="game-edit.js"></script>
+</body>
+</html>

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3-сынып Пәндері</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{
+  width:100vw;height:100vh;overflow:hidden;
+  font-family:'Segoe UI',system-ui,sans-serif;
+  transition:background 0.6s ease;
+  background:#e8f3ff;
+}
+
+/* ── Carousel wrapper ── */
+.wrap{
+  width:100%;height:100vh;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  position:relative;
+}
+
+/* Track shows 3 cards (peek effect) */
+.track-outer{
+  width:100%;
+  overflow:hidden;
+  position:relative;
+}
+
+.track{
+  display:flex;
+  align-items:center;
+  transition:transform 0.55s cubic-bezier(0.25,0.46,0.45,0.94);
+  padding: 100px 0 30px;
+}
+
+.slide{
+  flex:0 0 420px;
+  margin:0 20px;
+  display:flex;
+  justify-content:center;
+  transition:transform 0.55s ease, opacity 0.55s ease;
+}
+
+.slide:not(.active){
+  transform:scale(0.80);
+  opacity:0.55;
+}
+
+.slide.active{ transform:scale(1); opacity:1; }
+
+/* ── Card ── */
+.card{
+  width:360px;
+  border-radius:28px;
+  background:var(--bg);
+  box-shadow:0 25px 70px rgba(0,0,0,0.13);
+  position:relative;
+  overflow:visible;
+  cursor:pointer;
+  padding-bottom:34px;
+  transition:box-shadow 0.3s, transform 0.3s;
+}
+
+.card:hover{
+  box-shadow:0 35px 90px rgba(0,0,0,0.2);
+  transform:translateY(-6px);
+}
+
+/* Floating icon above card */
+.card-icon{
+  position:absolute;
+  top:-85px;
+  left:50%;
+  transform:translateX(-50%);
+  width:170px;height:170px;
+  display:flex;align-items:center;justify-content:center;
+  animation:float 3.5s ease-in-out infinite;
+  filter:drop-shadow(0 18px 25px rgba(0,0,0,0.22));
+}
+
+@keyframes float{
+  0%,100%{transform:translateX(-50%) translateY(0);}
+  50%{transform:translateX(-50%) translateY(-18px);}
+}
+
+/* Icon is a colored circle with SVG symbol */
+.icon-circle{
+  width:150px;height:150px;
+  border-radius:50%;
+  background:var(--color);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 10px 30px rgba(0,0,0,0.2);
+}
+
+.icon-circle svg{
+  width:80px;height:80px;
+  fill:rgba(255,255,255,0.9);
+}
+
+/* Card info section */
+.card-info{
+  padding:95px 30px 0;
+}
+
+.card-label{
+  font-size:0.72rem;
+  text-transform:uppercase;
+  letter-spacing:0.16em;
+  color:rgba(0,0,0,0.4);
+  margin-bottom:6px;
+}
+
+.card-title{
+  font-size:1.7rem;
+  font-weight:800;
+  color:var(--color);
+  margin-bottom:20px;
+  line-height:1.2;
+}
+
+.card-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--color);
+  color:#fff;
+  border:none;
+  padding:12px 26px;
+  border-radius:50px;
+  font-size:0.95rem;
+  font-weight:700;
+  cursor:pointer;
+  letter-spacing:0.04em;
+  box-shadow:0 6px 20px rgba(0,0,0,0.15);
+  transition:transform 0.2s, box-shadow 0.2s;
+}
+.card-btn:hover{transform:scale(1.06);box-shadow:0 10px 28px rgba(0,0,0,0.22);}
+
+/* ── Nav bar ── */
+.nav-bar{
+  display:flex;align-items:center;gap:80px;
+  margin-top:36px;
+}
+
+.nav-btn{
+  background:none;border:none;
+  font-size:0.8rem;font-weight:700;
+  letter-spacing:0.2em;
+  text-transform:uppercase;
+  color:rgba(0,0,0,0.35);
+  cursor:pointer;
+  padding:8px 4px;
+  border-bottom:2px solid rgba(0,0,0,0.15);
+  transition:color 0.2s, border-color 0.2s;
+}
+.nav-btn:hover{color:rgba(0,0,0,0.75);border-color:rgba(0,0,0,0.55);}
+
+/* Dots */
+.dots{display:flex;gap:10px;}
+.dot{
+  width:8px;height:8px;border-radius:50%;
+  background:rgba(0,0,0,0.18);
+  transition:background 0.3s, transform 0.3s;
+  cursor:pointer;
+}
+.dot.active{background:rgba(0,0,0,0.55);transform:scale(1.3);}
+
+/* ── Question Overlay ── */
+#overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.55);
+  backdrop-filter:blur(4px);
+  display:flex;align-items:center;justify-content:center;
+  z-index:200;
+  opacity:0;pointer-events:none;
+  transition:opacity 0.3s;
+}
+#overlay.show{opacity:1;pointer-events:all;}
+
+.popup{
+  background:#fff;
+  border-radius:28px;
+  padding:44px 40px;
+  max-width:520px;width:92%;
+  position:relative;
+  transform:translateY(20px) scale(0.95);
+  transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow:0 30px 80px rgba(0,0,0,0.25);
+}
+#overlay.show .popup{transform:translateY(0) scale(1);}
+
+.popup-badge{
+  display:inline-block;
+  padding:5px 14px;
+  border-radius:50px;
+  font-size:0.75rem;
+  font-weight:700;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  margin-bottom:16px;
+  color:#fff;
+}
+
+.popup-q{
+  font-size:1.45rem;
+  font-weight:700;
+  color:#111;
+  margin-bottom:28px;
+  line-height:1.45;
+}
+
+.opts{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.opt{
+  padding:15px 16px;
+  border:2.5px solid #e8e8e8;
+  border-radius:14px;
+  background:#f7f7f7;
+  font-size:1.05rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:all 0.2s;
+  text-align:left;
+  color:#222;
+}
+.opt:hover{border-color:#bbb;background:#f0f0f0;}
+.opt.correct{background:#d0f5e2;border-color:#22bb66;color:#115533;}
+.opt.wrong  {background:#ffe2e2;border-color:#dd3333;color:#882222;}
+.opt.disabled{pointer-events:none;opacity:0.75;}
+
+.result-msg{
+  margin-top:20px;
+  font-size:1.1rem;
+  font-weight:700;
+  text-align:center;
+  min-height:26px;
+  transition:opacity 0.3s;
+}
+
+.close-x{
+  position:absolute;top:18px;right:22px;
+  background:none;border:none;
+  font-size:1.3rem;color:#aaa;cursor:pointer;
+  transition:color 0.2s;
+}
+.close-x:hover{color:#333;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="track-outer">
+    <div class="track" id="track"></div>
+  </div>
+  <div class="nav-bar">
+    <button class="nav-btn" id="prevBtn">← АЛДЫҢҒЫ</button>
+    <div class="dots" id="dots"></div>
+    <button class="nav-btn" id="nextBtn">КЕЛЕСІ →</button>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="popup" id="popup">
+    <button class="close-x" id="closeBtn">✕</button>
+    <div class="popup-badge" id="pBadge"></div>
+    <div class="popup-q" id="pQ"></div>
+    <div class="opts" id="pOpts"></div>
+    <div class="result-msg" id="pResult"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+      <button id="sbNextBtn" style="display:none;padding:11px 26px;background:#22c55e;border:none;border-radius:50px;font-size:0.9rem;font-weight:700;cursor:pointer;color:#fff;letter-spacing:0.04em;box-shadow:0 4px 16px rgba(34,197,94,0.35);transition:transform 0.15s,box-shadow 0.15s;">Келесі сұрақ →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══ SUBJECT DATA ══ */
+window.GAME_TYPE  = 'subjects';
+window.GAME_TITLE = 'Пәндер Карусели';
+window.getGameConfig = () => ({
+  subjects: SUBJECTS.map(s=>({
+    name: s.name,
+    icon: s.userIcon || '📚',
+    questions: (s.questions||[]).map(q=>({q:q.q, opts:q.opts, ans:q.ans}))
+  }))
+});
+
+const BG_PALETTE = [
+  {bg:'#daeeff',color:'#1155bb',pageBg:'#e4f1ff'},
+  {bg:'#fff3d0',color:'#cc7700',pageBg:'#fff8e4'},
+  {bg:'#d4f5e0',color:'#117744',pageBg:'#e2faea'},
+  {bg:'#ecdeff',color:'#6622bb',pageBg:'#f2e8ff'},
+  {bg:'#ffe4e4',color:'#cc2222',pageBg:'#fff0f0'},
+  {bg:'#e4f4ff',color:'#0066cc',pageBg:'#eef8ff'},
+];
+
+function buildSubjectIcon(icon){
+  const txt = icon||'📚';
+  return `<div style="font-size:5rem;line-height:1">${txt}</div>`;
+}
+
+window.setGameConfig = function(cfg){
+  if(!cfg || !cfg.subjects || !cfg.subjects.length) return;
+
+  // Жаңа SUBJECTS жасаймыз
+  const newSubjects = cfg.subjects.map((s, i)=>{
+    const pal = BG_PALETTE[i % BG_PALETTE.length];
+    let questions;
+    if(s.questions && s.questions.length){
+      // Жаңа формат: {q, opts:[A,B,C,D], ans}
+      questions = s.questions.map(qo=>({
+        q: qo.q||'',
+        opts: qo.opts||['?','?','?','?'],
+        ans: typeof qo.ans==='number' ? qo.ans : 0
+      }));
+    } else {
+      // Ескі формат: qa строк "сұрақ:жауап"
+      questions = (s.qa||[]).map(line=>{
+        const idx = line.indexOf(':');
+        if(idx<0) return {q:line, opts:['?'], ans:0};
+        const q = line.slice(0,idx).trim();
+        const a = line.slice(idx+1).trim();
+        return {q, opts:[a,'...','...','...'], ans:0};
+      });
+    }
+    return {
+      name: s.name || 'Пән',
+      bg: pal.bg, color: pal.color, pageBg: pal.pageBg,
+      userIcon: s.icon || '📚',
+      icon: buildSubjectIcon(s.icon),
+      questions
+    };
+  });
+
+  // DOM-ды жаңартамыз
+  SUBJECTS.length = 0;
+  newSubjects.forEach(s=> SUBJECTS.push(s));
+
+  track.innerHTML = '';
+  dotsEl.innerHTML = '';
+
+  SUBJECTS.forEach((s,i)=>{
+    const slide = document.createElement('div');
+    slide.className='slide';
+    slide.innerHTML=`
+      <div class="card" style="--bg:${s.bg};--color:${s.color}" data-idx="${i}">
+        <div class="card-icon">
+          <div class="icon-circle" style="background:${s.color}">${s.icon}</div>
+        </div>
+        <div class="card-info">
+          <div class="card-label">Пән</div>
+          <div class="card-title">${s.name}</div>
+          <button class="card-btn">Сұрақ алу &rarr;</button>
+        </div>
+      </div>`;
+    track.appendChild(slide);
+    const dot = document.createElement('div');
+    dot.className='dot';
+    dot.onclick=()=>goTo(i);
+    dotsEl.appendChild(dot);
+  });
+
+  current = 0;
+  goTo(0);
+};
+
+const SUBJECTS = [
+  {
+    name:'Қазақ тілі',
+    bg:'#daeeff', color:'#1155bb', pageBg:'#e4f1ff',
+    icon:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <rect x="8" y="6" width="52" height="64" rx="6" fill="white" opacity="0.9"/>
+      <rect x="8" y="6" width="14" height="64" rx="4" fill="white" opacity="0.5"/>
+      <rect x="26" y="22" width="26" height="3" rx="1.5" fill="white" opacity="0.6"/>
+      <rect x="26" y="30" width="26" height="3" rx="1.5" fill="white" opacity="0.6"/>
+      <rect x="26" y="38" width="20" height="3" rx="1.5" fill="white" opacity="0.6"/>
+      <rect x="26" y="46" width="22" height="3" rx="1.5" fill="white" opacity="0.6"/>
+      <path d="M56 48 L72 56 L56 64 Z" fill="white" opacity="0.8"/>
+    </svg>`,
+    questions:[
+      {q:'Қазақ алфавитіндегі дауысты дыбыстар нешеу?',opts:['8','10','12','14'],ans:2},
+      {q:'«Кітап» сөзі қай сөз табына жатады?',opts:['Етістік','Зат есім','Сын есім','Үстеу'],ans:1},
+      {q:'«Мектеп» сөзіндегі буын саны нешеу?',opts:['1','2','3','4'],ans:1},
+      {q:'Дыбыстар нешеге бөлінеді?',opts:['Бір топқа','Екі топқа','Үш топқа','Төрт топқа'],ans:1},
+    ]
+  },
+  {
+    name:'Әдебиет',
+    bg:'#fff3d0', color:'#cc7700', pageBg:'#fff8e4',
+    icon:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <rect x="12" y="10" width="40" height="54" rx="4" fill="white" opacity="0.9"/>
+      <rect x="16" y="18" width="32" height="3" rx="1.5" fill="white" opacity="0.5"/>
+      <rect x="16" y="26" width="32" height="3" rx="1.5" fill="white" opacity="0.5"/>
+      <rect x="16" y="34" width="24" height="3" rx="1.5" fill="white" opacity="0.5"/>
+      <path d="M48 30 Q58 26 62 38 Q58 44 54 40 Q52 38 54 34 Q56 30 52 30 Z" fill="white" opacity="0.85"/>
+      <line x1="62" y1="38" x2="70" y2="58" stroke="white" stroke-width="4" stroke-linecap="round" opacity="0.85"/>
+    </svg>`,
+    questions:[
+      {q:'Мақал-мәтел — бұл не?',opts:['Ертегі','Халықтың даналық сөзі','Жыр','Мысал'],ans:1},
+      {q:'Абай Құнанбаев туған жылы?',opts:['1840','1845','1850','1855'],ans:1},
+      {q:'Өлеңнің жолдары не деп аталады?',opts:['Шумақ','Бунақ','Тармақ','Жыр'],ans:2},
+      {q:'Халық ауыз әдебиетінің негізгі жанры қайсы?',opts:['Роман','Ертегі','Повесть','Пьеса'],ans:1},
+    ]
+  },
+  {
+    name:'Жаратылыстану',
+    bg:'#d4f5e0', color:'#117744', pageBg:'#e2faea',
+    icon:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="40" cy="36" r="22" fill="none" stroke="white" stroke-width="3.5" opacity="0.85"/>
+      <circle cx="40" cy="36" r="8" fill="white" opacity="0.7"/>
+      <line x1="40" y1="10" x2="40" y2="20" stroke="white" stroke-width="3" opacity="0.7"/>
+      <line x1="16" y1="36" x2="26" y2="36" stroke="white" stroke-width="3" opacity="0.7"/>
+      <line x1="54" y1="36" x2="64" y2="36" stroke="white" stroke-width="3" opacity="0.7"/>
+      <line x1="40" y1="52" x2="40" y2="62" stroke="white" stroke-width="3" opacity="0.7"/>
+      <path d="M28 62 Q40 70 52 62" stroke="white" stroke-width="2.5" fill="none" opacity="0.6"/>
+    </svg>`,
+    questions:[
+      {q:'Судың қайнау температурасы нешеде?',opts:['80°C','90°C','100°C','120°C'],ans:2},
+      {q:'Күн жүйесінде нешеу планета бар?',opts:['7','8','9','10'],ans:1},
+      {q:'Өсімдіктер не арқылы тыныс алады?',opts:['Тамыры','Сабағы','Жапырағы','Гүлі'],ans:2},
+      {q:'Ауаның негізгі компоненті қайсы?',opts:['Оттегі','Азот','Көміртегі','Сутегі'],ans:1},
+    ]
+  },
+  {
+    name:'Математика',
+    bg:'#ecdeff', color:'#6622bb', pageBg:'#f2e8ff',
+    icon:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <text x="6" y="38" font-size="28" font-weight="900" fill="white" opacity="0.9" font-family="Arial">7×8</text>
+      <text x="10" y="66" font-size="22" font-weight="900" fill="white" opacity="0.7" font-family="Arial">= 56</text>
+    </svg>`,
+    questions:[
+      {q:'7 × 8 = ?',opts:['54','56','58','63'],ans:1},
+      {q:'100 − 37 = ?',opts:['53','63','73','67'],ans:1},
+      {q:'24 ÷ 4 = ?',opts:['4','5','6','8'],ans:2},
+      {q:'9 × 9 = ?',opts:['72','81','90','79'],ans:1},
+    ]
+  }
+];
+
+/* ══ Build slides ══ */
+const track = document.getElementById('track');
+const dotsEl = document.getElementById('dots');
+let current = 0;
+
+SUBJECTS.forEach((s,i)=>{
+  const slide = document.createElement('div');
+  slide.className='slide';
+  slide.innerHTML=`
+    <div class="card" style="--bg:${s.bg};--color:${s.color}" data-idx="${i}">
+      <div class="card-icon">
+        <div class="icon-circle" style="background:${s.color}">${s.icon}</div>
+      </div>
+      <div class="card-info">
+        <div class="card-label">3-сынып пәні</div>
+        <div class="card-title">${s.name}</div>
+        <button class="card-btn">Сұрақ алу &rarr;</button>
+      </div>
+    </div>`;
+  track.appendChild(slide);
+
+  const dot = document.createElement('div');
+  dot.className='dot';
+  dot.onclick=()=>goTo(i);
+  dotsEl.appendChild(dot);
+});
+
+const slides = track.querySelectorAll('.slide');
+const dots   = dotsEl.querySelectorAll('.dot');
+
+/* ══ Navigation ══ */
+function goTo(idx){
+  current = (idx + SUBJECTS.length) % SUBJECTS.length;
+  /* Center the active slide */
+  const slideW = 460; // 420px flex + 2×20px margin
+  const offset = (window.innerWidth/2) - slideW/2 - (current * slideW);
+  track.style.transform = `translateX(${offset}px)`;
+  document.body.style.background = SUBJECTS[current].pageBg;
+
+  slides.forEach((sl,i)=>{
+    sl.classList.toggle('active', i===current);
+  });
+  dots.forEach((d,i)=> d.classList.toggle('active', i===current));
+}
+
+document.getElementById('prevBtn').onclick = ()=>goTo(current-1);
+document.getElementById('nextBtn').onclick = ()=>goTo(current+1);
+
+/* Click on any card */
+track.addEventListener('click',(e)=>{
+  const card = e.target.closest('.card');
+  if(!card) return;
+  const idx = parseInt(card.dataset.idx);
+  if(idx !== current){ goTo(idx); return; }
+  openQ(idx);
+});
+
+window.addEventListener('resize',()=>goTo(current));
+goTo(0);
+
+/* ══ Question popup ══ */
+const overlay   = document.getElementById('overlay');
+const pBadge    = document.getElementById('pBadge');
+const pQ        = document.getElementById('pQ');
+const pOpts     = document.getElementById('pOpts');
+const pResult   = document.getElementById('pResult');
+const sbNextBtn = document.getElementById('sbNextBtn');
+
+let sbSubIdx = 0;
+let sbQIdx   = 0;
+
+function openQ(idx){
+  sbSubIdx = idx;
+  sbQIdx   = 0;
+  showQAt(idx, 0);
+}
+
+function showQAt(subIdx, qIdx){
+  const s = SUBJECTS[subIdx];
+  if(!s.questions || !s.questions.length){ return; }
+
+  sbQIdx = ((qIdx % s.questions.length) + s.questions.length) % s.questions.length;
+  const q = s.questions[sbQIdx];
+
+  pBadge.textContent = s.name;
+  pBadge.style.background = s.color;
+  pQ.textContent = q.q;
+  pResult.textContent = '';
+  pOpts.innerHTML = '';
+
+  const correctOpt = q.opts[q.ans];
+  const allSame = q.opts.every(o=> o==='...');
+  if(allSame || q.opts.length <= 1){
+    const btn = document.createElement('button');
+    btn.className='opt';
+    btn.style.gridColumn='1/-1';
+    btn.textContent = '👁 Жауабын ашу';
+    btn.onclick=()=>{
+      btn.classList.add('correct');
+      btn.textContent = '✅ ' + correctOpt;
+      pResult.textContent='';
+    };
+    pOpts.appendChild(btn);
+  } else {
+    q.opts.forEach((opt,i)=>{
+      const btn = document.createElement('button');
+      btn.className='opt';
+      btn.textContent = ['A','B','C','D'][i]+') '+opt;
+      btn.onclick=()=>{
+        pOpts.querySelectorAll('.opt').forEach(b=>b.classList.add('disabled'));
+        if(i===q.ans){
+          btn.classList.add('correct');
+          pResult.textContent='✅ Дұрыс жауап!';
+          pResult.style.color='#117744';
+        } else {
+          btn.classList.add('wrong');
+          pOpts.querySelectorAll('.opt')[q.ans].classList.add('correct');
+          pResult.textContent='❌ Дұрыс емес.';
+          pResult.style.color='#cc3333';
+        }
+      };
+      pOpts.appendChild(btn);
+    });
+  }
+
+  if(s.questions.length > 1){
+    sbNextBtn.style.display = '';
+    sbNextBtn.textContent = 'Келесі сұрақ → ' + (sbQIdx+1) + ' / ' + s.questions.length;
+  } else {
+    sbNextBtn.style.display = 'none';
+  }
+
+  overlay.classList.add('show');
+}
+
+sbNextBtn.addEventListener('click', ()=>{
+  showQAt(sbSubIdx, sbQIdx + 1);
+});
+
+document.getElementById('closeBtn').onclick=()=>overlay.classList.remove('show');
+overlay.addEventListener('click',(e)=>{if(e.target===overlay)overlay.classList.remove('show');});
+</script>
+<script src="game-edit.js"></script>
+</body>
+</html>

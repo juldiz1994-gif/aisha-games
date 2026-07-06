@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ai_aisha_kz</title>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #0a0a0a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: none;
+    }
+
+    /* Астыңғы қабат — ашылатын мазмұн */
+    .bg-content {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .bg-text {
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(4rem, 14vw, 10rem);
+      font-weight: 700;
+      background: linear-gradient(135deg, #fff8e1, #D4AF37, #fff8e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: none;
+      letter-spacing: 0.02em;
+      filter: drop-shadow(0 0 40px rgba(212,175,55,0.6));
+      white-space: nowrap;
+    }
+
+    .bg-sub {
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(1rem, 3vw, 1.8rem);
+      color: rgba(212,175,55,0.5);
+      letter-spacing: 0.15em;
+    }
+
+    /* Canvas — үстіңгі жасыратын қабат */
+    #scratchCanvas {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      cursor: none;
+    }
+
+    /* Жасалған курсор */
+    #cursor {
+      position: fixed;
+      width: 40px;
+      height: 40px;
+      border: 2px solid rgba(212,175,55,0.6);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 20;
+      transform: translate(-50%, -50%);
+      transition: transform 0.05s;
+    }
+
+    /* Hint мәтін */
+    #hint {
+      position: fixed;
+      bottom: 2.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      color: rgba(212,175,55,0.9);
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(1rem, 2.5vw, 1.3rem);
+      letter-spacing: 0.08em;
+      pointer-events: none;
+      transition: opacity 0.8s ease;
+      text-align: center;
+    }
+    #hint.hide { opacity: 0; }
+
+    /* Сұрақ үстінде */
+    #rv-question {
+      position: fixed;
+      top: 1.8rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      color: #fff;
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(1.2rem, 3.5vw, 2rem);
+      letter-spacing: 0.06em;
+      pointer-events: none;
+      text-align: center;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.35);
+      padding: 10px 24px;
+      border-radius: 50px;
+      white-space: nowrap;
+      max-width: 90vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Сұрақ — жоғарыда -->
+  <div id="rv-question">Сырып ашыңыз ✨</div>
+
+  <!-- Астыңғы мазмұн (жауап) -->
+  <div class="bg-content">
+    <div class="bg-text" id="rv-answer">ai_aisha_kz</div>
+    <div class="bg-sub" id="rv-sub">✦ &nbsp; ✦ &nbsp; ✦</div>
+  </div>
+
+  <!-- Scratch canvas -->
+  <canvas id="scratchCanvas"></canvas>
+
+  <!-- Курсор -->
+  <div id="cursor"></div>
+
+  <!-- Hint -->
+  <div id="hint">мышканы жылжыт ✨</div>
+
+  <script>
+    const canvas = document.getElementById('scratchCanvas');
+    const ctx    = canvas.getContext('2d');
+    const curEl  = document.getElementById('cursor');
+    const hintEl = document.getElementById('hint');
+
+    let isDrawing = false;
+    let moved     = false;
+    let revealed  = 0;
+    const TOTAL_CELLS = 20 * 20;
+
+    function resize() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      // Қолданыстағы пиксельдерді сақтаймыз
+      const tmp = document.createElement('canvas');
+      tmp.width  = canvas.width;
+      tmp.height = canvas.height;
+      tmp.getContext('2d').drawImage(canvas, 0, 0);
+
+      canvas.width  = w;
+      canvas.height = h;
+
+      // Толтыру — алтын сары
+      fillCanvas();
+      // Ескі сызықтарды қайта салу
+      ctx.drawImage(tmp, 0, 0, w, h);
+    }
+
+    function fillCanvas() {
+      ctx.globalCompositeOperation = 'source-over';
+      const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      grad.addColorStop(0,   '#C8960C');
+      grad.addColorStop(0.5, '#D4AF37');
+      grad.addColorStop(1,   '#B07D0A');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function erase(x, y, r) {
+      ctx.globalCompositeOperation = 'destination-out';
+      const grd = ctx.createRadialGradient(x, y, 0, x, y, r);
+      grd.addColorStop(0,   'rgba(0,0,0,1)');
+      grd.addColorStop(0.6, 'rgba(0,0,0,0.9)');
+      grd.addColorStop(1,   'rgba(0,0,0,0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function checkReveal() {
+      if (revealed > 55) {
+        hintEl.classList.add('hide');
+      }
+    }
+
+    // Мышка жылжыту
+    function onMove(x, y) {
+      if (!moved) {
+        moved = true;
+        hintEl.classList.add('hide');
+      }
+      // Курсорды жылжыту
+      curEl.style.left = x + 'px';
+      curEl.style.top  = y + 'px';
+
+      erase(x, y, 55);
+      revealed = Math.min(100, revealed + 0.4);
+    }
+
+    canvas.addEventListener('mousemove', e => {
+      onMove(e.clientX, e.clientY);
+    });
+
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      const t = e.touches[0];
+      onMove(t.clientX, t.clientY);
+    }, { passive: false });
+
+    // Мышка кірген / шыққан
+    document.addEventListener('mousemove', e => {
+      curEl.style.left = e.clientX + 'px';
+      curEl.style.top  = e.clientY + 'px';
+    });
+
+    window.addEventListener('resize', resize);
+
+    // Іске қосу
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    fillCanvas();
+  window.GAME_TYPE  = 'reveal';
+  window.GAME_TITLE = 'Reveal — Ашу';
+
+  let RV_RIDDLES = [];
+  let rvIdx = 0;
+
+  function applyRiddle(r){
+    document.getElementById('rv-question').textContent = r.q || 'Сырып ашыңыз ✨';
+    document.getElementById('rv-answer').textContent   = r.a || 'ai_aisha_kz';
+    document.getElementById('rv-sub').textContent      = '✦   ✦   ✦';
+    fillCanvas();
+  }
+
+  window.getGameConfig  = () => ({ title: 'Reveal', riddles: RV_RIDDLES.slice() });
+  window.setGameConfig  = function(cfg){
+    if(cfg && cfg.riddles && cfg.riddles.length){
+      RV_RIDDLES = cfg.riddles;
+      rvIdx = 0;
+      applyRiddle(RV_RIDDLES[0]);
+      showRvNextBtn();
+    }
+  };
+
+  function showRvNextBtn(){
+    if(RV_RIDDLES.length < 2) return;
+    let btn = document.getElementById('rv-next-btn');
+    if(!btn){
+      btn = document.createElement('button');
+      btn.id = 'rv-next-btn';
+      btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:50;background:#22c55e;border:none;color:#fff;padding:12px 24px;border-radius:50px;font-size:0.88rem;font-weight:700;cursor:pointer;letter-spacing:0.04em;box-shadow:0 4px 16px rgba(34,197,94,0.4);transition:transform 0.15s,box-shadow 0.15s;';
+      btn.onmouseover = ()=>{ btn.style.transform='scale(1.06)'; };
+      btn.onmouseout  = ()=>{ btn.style.transform='scale(1)'; };
+      btn.onclick = function(){
+        rvIdx = (rvIdx + 1) % RV_RIDDLES.length;
+        applyRiddle(RV_RIDDLES[rvIdx]);
+        btn.textContent = 'Келесі сұрақ → ' + (rvIdx+1) + ' / ' + RV_RIDDLES.length;
+      };
+      document.body.appendChild(btn);
+    }
+    btn.textContent = 'Келесі сұрақ → 1 / ' + RV_RIDDLES.length;
+  }
+  </script>
+<script src="game-edit.js"></script>
+</body>
+</html>

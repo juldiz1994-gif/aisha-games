@@ -1,0 +1,273 @@
+﻿<!DOCTYPE html>
+<html lang="kk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Айшаның AI Студиясы</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <a href="#hero" class="nav-logo">AISHA<span>.</span>AI</a>
+    <ul class="nav-links">
+      <li><a href="#hero">Басты</a></li>
+      <li><a href="#services">Қызметтер</a></li>
+      <li><a href="#contact">Байланыс</a></li>
+    </ul>
+    <div class="nav-hamburger" id="hamburger">
+      <span></span>
+      <span></span>
+    </div>
+    <button class="theme-toggle" id="themeBtn" title="Күн/Түн режимі">🌙</button>
+  </nav>
+
+  <!-- MOBILE MENU -->
+  <div class="mobile-menu" id="mobileMenu">
+    <button class="mobile-close" id="mobileClose">×</button>
+    <a href="#hero" onclick="closeMob()">Басты</a>
+    <a href="#services" onclick="closeMob()">Қызметтер</a>
+    <a href="#contact" onclick="closeMob()">Байланыс</a>
+  </div>
+
+  <!-- ═══ PAGE 1: HERO ═══ -->
+  <section id="hero" class="hero">
+
+    <!-- Фон анимациясы -->
+    <div class="hero-bg" aria-hidden="true">
+      <div class="bg-grid"></div>
+      <div class="bg-shape shape-1"></div>
+      <div class="bg-shape shape-2"></div>
+      <div class="bg-shape shape-3"></div>
+      <div class="bg-line line-1"></div>
+      <div class="bg-line line-2"></div>
+    </div>
+
+    <div class="hero-content">
+      <!-- Мәтін блогы -->
+      <div class="hero-text">
+        <div class="hero-badge reveal">
+          <span class="badge-dot"></span>
+          ЖИ · AI STUDIO · 2024
+        </div>
+        <h1 class="hero-title">
+          <span class="reveal delay-1">Айшаның</span>
+          <em class="reveal delay-2">Жасанды</em>
+          <span class="reveal delay-3">Интеллект</span>
+          <span class="reveal delay-4">Студиясына</span>
+          <span class="reveal delay-5">қош келдіңіз</span>
+        </h1>
+        <p class="hero-sub reveal delay-6">
+          AI технологиясы арқылы бизнесіңізді жаңа деңгейге шығарыңыз —
+          кәсіби видеолардан бастап ақылды чат-боттарға дейін.
+        </p>
+        <div class="hero-actions reveal delay-7">
+          <a href="#services" class="btn-red">Қызметтерді көру</a>
+          <a href="#contact" class="btn-outline">Байланысу</a>
+        </div>
+      </div>
+
+      <!-- Анимация блогы (photo.jpg орнына) -->
+      <div class="hero-photo reveal delay-4">
+        <div class="photo-frame">
+
+          <div class="anim-scene" id="animScene">
+            <!-- Тақырып -->
+            <div class="anim-title">Login Bag Form</div>
+
+            <!-- Көк аймақ: кейіпкер + форма -->
+            <div class="anim-blue">
+              <div class="anim-char">🧑‍💼</div>
+              <div class="anim-bag">💼</div>
+              <div class="anim-form-wrap">
+                <div class="anim-form" id="animForm">
+                  <div class="af-header">Register now</div>
+                  <div class="af-sub">Secure your spot in our live webinar</div>
+                  <div class="af-label">What's your name? *</div>
+                  <div class="af-field">
+                    <span>👤</span>
+                    <span class="af-typed" id="afTyped"></span><span class="af-cursor" id="afCursor">|</span>
+                  </div>
+                  <div class="af-field">
+                    <span>👥</span><span class="af-ph">Surname</span>
+                  </div>
+                  <div class="af-label">Enter your email *</div>
+                  <div class="af-field">
+                    <span>✉️</span><span class="af-ph">yourname@company.com</span>
+                  </div>
+                  <div class="af-powered">Powered by Visme Forms</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Код редактор -->
+            <div class="anim-code">
+              <div class="ac-tab">
+                <span class="ac-dot ac-dot--r"></span>
+                <span class="ac-dot ac-dot--y"></span>
+                <span class="ac-dot ac-dot--g"></span>
+                <span class="ac-tabname">the_coding_wizard.html</span>
+              </div>
+              <div class="ac-body">
+                <span class="ac-k">&lt;div</span> <span class="ac-a">class</span>=<span class="ac-s">"visme_d"</span><br>
+                &nbsp;&nbsp;<span class="ac-a">data-title</span>=<span class="ac-s">"Reg Form"</span><br>
+                &nbsp;&nbsp;<span class="ac-a">data-domain</span>=<span class="ac-s">"forms"</span><br>
+                &nbsp;&nbsp;<span class="ac-a">data-form-id</span>=<span class="ac-s">"133190"</span>&gt;<br>
+                <span class="ac-k">&lt;/div&gt;</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="photo-border"></div>
+          <div class="photo-tag">LIVE DEMO</div>
+
+          <!-- Scratch overlay -->
+          <canvas id="photoScratch" class="photo-scratch"></canvas>
+          <div class="scratch-hint" id="scratchHint">мышканы жылжыт ✦</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Төмен жылжу белгісі -->
+    <div class="scroll-hint">
+      <span>ТӨМЕН ҚАРАҢЫЗ</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- ═══ PAGE 2: SERVICES ═══ -->
+  <section id="services" class="services">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="section-label">// ҚЫЗМЕТТЕР</span>
+        <h2 class="section-title">Не ұсынамыз</h2>
+        <div class="red-line"></div>
+      </div>
+
+      <div class="services-grid">
+
+        <!-- Карточка 1 -->
+        <article class="service-card reveal">
+          <div class="card-number">01</div>
+          <div class="card-icon">🎬</div>
+          <h3 class="card-title">AI арқылы видео жасау</h3>
+          <p class="card-desc">
+            Жасанды интеллект көмегімен кәсіби видеолар, рекламалар және
+            презентациялар жасаймыз. Жылдам, сапалы, тиімді баға.
+          </p>
+          <ul class="card-list">
+            <li>Сценарий жазу</li>
+            <li>AI дауыс + бейне генерация</li>
+            <li>Кез келген тіл мен стиль</li>
+            <li>Монтаж және өңдеу</li>
+          </ul>
+          <a href="#contact" class="card-link">Тапсырыс беру →</a>
+        </article>
+
+        <!-- Карточка 2 -->
+        <article class="service-card reveal delay-2">
+          <div class="card-number">02</div>
+          <div class="card-icon">🤖</div>
+          <h3 class="card-title">Чат-бот орнату</h3>
+          <p class="card-desc">
+            Бизнесіңіз үшін ақылды чат-бот жасаймыз. Telegram, WhatsApp,
+            Instagram — кез келген платформада жұмыс жасайды.
+          </p>
+          <ul class="card-list">
+            <li>Telegram боты</li>
+            <li>WhatsApp боты</li>
+            <li>AI автоматты жауаптар</li>
+            <li>Admin панель</li>
+          </ul>
+          <a href="#contact" class="card-link">Тапсырыс беру →</a>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ PAGE 3: CONTACT ═══ -->
+  <section id="contact" class="contact">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="section-label">// БАЙЛАНЫС</span>
+        <h2 class="section-title">Хабарласыңыз</h2>
+        <div class="red-line"></div>
+      </div>
+
+      <div class="contact-grid contact-grid--single">
+
+        <!-- Байланыс ақпарат -->
+        <div class="contact-info reveal">
+          <h3>Бізбен байланысыңыз</h3>
+          <p>Telegram немесе Instagram арқылы хабарласыңыз. Жауабымыз жылдам!</p>
+
+          <div class="contact-links">
+
+            <!-- Telegram -->
+            <a href="https://t.me/+e9V00D-EATpkYjQy"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="contact-item telegram-item">
+              <div class="item-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <path d="M21.198 2.433a2.242 2.242 0 0 0-1.022.215l-16.5 6.5c-1.33.523-1.304 2.04.05 2.511l3.825 1.302 1.313 4.382c.167.556.751.84 1.303.67l2.23-.713L14.2 19.4c.39.39.948.507 1.442.3.493-.208.798-.69.798-1.228V4.5c0-.89-.698-2.067-1.242-2.067z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div class="item-text">
+                <strong>Telegram</strong>
+                <span>Чатқа жазу</span>
+              </div>
+              <div class="item-arrow">→</div>
+            </a>
+
+            <!-- Instagram -->
+            <a href="https://www.instagram.com/ai_aisha_kz?igsh=NHV4ZW85cGxtNHJr"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="contact-item instagram-item">
+              <div class="item-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="2" width="20" height="20" rx="5" stroke="currentColor" stroke-width="2"/>
+                  <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+                  <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor"/>
+                </svg>
+              </div>
+              <div class="item-text">
+                <strong>Instagram</strong>
+                <span>@ai_aisha_kz</span>
+              </div>
+              <div class="item-arrow">→</div>
+            </a>
+
+          </div>
+
+          <!-- Жұмыс уақыты -->
+          <div class="work-hours">
+            <span class="hours-dot"></span>
+            Дүйсенбі – Жексенбі: 09:00 – 21:00
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-logo">AISHA<span>.</span>AI</div>
+        <p class="footer-copy">© 2024 Айшаның AI Студиясы. Барлық құқықтар қорғалған.</p>
+        <a href="https://t.me/+e9V00D-EATpkYjQy" target="_blank" rel="noopener noreferrer" class="footer-tel">Telegram →</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
+

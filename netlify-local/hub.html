@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Мұғалімдер Платформасы</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{
+  min-height:100vh;
+  background:#060816;
+  font-family:'Segoe UI',system-ui,sans-serif;
+  color:#fff;
+}
+
+/* Stars canvas */
+#stars{position:fixed;inset:0;z-index:0;pointer-events:none;}
+
+/* ── Top bar ── */
+#topbar{
+  position:fixed;top:0;left:0;right:0;
+  height:64px;
+  background:rgba(6,8,22,0.92);
+  border-bottom:1px solid rgba(255,200,100,0.12);
+  backdrop-filter:blur(12px);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 28px;
+  z-index:100;
+}
+#topbar-title{
+  font-size:1.1rem;font-weight:800;
+  letter-spacing:0.15em;
+  color:#ffd700;
+  text-shadow:0 0 20px rgba(255,200,0,0.4);
+  text-transform:uppercase;
+}
+#topbar-right{display:flex;align-items:center;gap:14px;}
+#user-email{
+  font-size:0.78rem;color:rgba(255,255,255,0.55);
+  max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+#logout-btn{
+  background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.15);
+  color:rgba(255,255,255,0.7);
+  padding:7px 16px;border-radius:8px;
+  cursor:pointer;font-size:0.78rem;
+  transition:background 0.2s;
+}
+#logout-btn:hover{background:rgba(255,255,255,0.14);}
+
+/* ── Main content ── */
+#main{
+  position:relative;z-index:10;
+  padding:88px 28px 48px;
+  max-width:1200px;margin:0 auto;
+}
+
+#section-title{
+  text-align:center;
+  font-size:clamp(0.85rem,2vw,1rem);
+  letter-spacing:0.2em;
+  color:rgba(255,255,255,0.35);
+  text-transform:uppercase;
+  margin-bottom:8px;
+}
+#section-sub{
+  text-align:center;
+  font-size:clamp(1.4rem,4vw,2rem);
+  font-weight:800;
+  color:#fff;
+  margin-bottom:12px;
+  letter-spacing:0.04em;
+}
+#section-desc{
+  text-align:center;
+  font-size:clamp(0.8rem,1.8vw,0.95rem);
+  color:rgba(255,200,100,0.6);
+  margin-bottom:36px;
+  font-style:italic;
+  letter-spacing:0.02em;
+}
+
+/* ── Games grid ── */
+#grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:20px;
+}
+
+.game-card{
+  border-radius:18px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,0.08);
+  background:rgba(255,255,255,0.03);
+  transition:transform 0.25s,box-shadow 0.25s,border-color 0.25s;
+  cursor:pointer;
+  position:relative;
+}
+.game-card:hover{
+  transform:translateY(-6px);
+  box-shadow:0 20px 50px rgba(0,0,0,0.5);
+  border-color:rgba(255,200,100,0.3);
+}
+
+.card-thumb{
+  height:140px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:3.5rem;
+  position:relative;
+  overflow:hidden;
+}
+.card-thumb::after{
+  content:'';
+  position:absolute;inset:0;
+  background:linear-gradient(to bottom,transparent 50%,rgba(0,0,0,0.4));
+}
+
+.card-body{
+  padding:14px 16px 16px;
+}
+.card-name{
+  font-size:0.95rem;font-weight:700;
+  color:#fff;margin-bottom:4px;
+  line-height:1.3;
+}
+.card-desc{
+  font-size:0.72rem;
+  color:rgba(255,255,255,0.45);
+  line-height:1.4;
+  margin-bottom:12px;
+}
+.card-btns{display:flex;gap:8px;}
+.btn-open{
+  flex:1;
+  background:linear-gradient(135deg,var(--c1,#1e40af),var(--c2,#3b82f6));
+  border:none;color:#fff;
+  padding:9px 0;border-radius:9px;
+  font-weight:700;font-size:0.78rem;
+  cursor:pointer;letter-spacing:0.05em;
+  transition:opacity 0.2s,transform 0.15s;
+}
+.btn-open:hover{opacity:0.88;transform:scale(1.03);}
+.card-ig{
+  border-color:rgba(200,100,255,0.25);
+  background:rgba(150,50,200,0.06);
+}
+.card-ig:hover{border-color:rgba(200,100,255,0.5)!important;}
+
+/* ── Login overlay ── */
+#login-overlay{
+  position:fixed;inset:0;
+  background:rgba(4,5,16,0.96);
+  z-index:999;
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(8px);
+}
+#login-box{
+  width:min(420px,90vw);
+  background:#0e1020;
+  border:1px solid rgba(255,200,100,0.2);
+  border-radius:20px;
+  padding:40px 36px;
+  box-shadow:0 20px 80px rgba(0,0,0,0.6);
+}
+#login-box h2{
+  font-size:1.4rem;font-weight:800;
+  color:#ffd700;text-align:center;
+  margin-bottom:6px;letter-spacing:0.08em;
+}
+#login-box .sub{
+  text-align:center;font-size:0.78rem;
+  color:rgba(255,255,255,0.4);
+  margin-bottom:28px;letter-spacing:0.1em;
+  text-transform:uppercase;
+}
+.inp{
+  width:100%;
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:10px;
+  padding:13px 16px;
+  color:#fff;font-size:0.9rem;
+  outline:none;margin-bottom:14px;
+  transition:border-color 0.2s;
+}
+.inp:focus{border-color:rgba(255,200,100,0.5);}
+.inp::placeholder{color:rgba(255,255,255,0.25);}
+#login-btn{
+  width:100%;
+  background:linear-gradient(135deg,#d97706,#f59e0b);
+  border:none;color:#000;
+  padding:14px;border-radius:10px;
+  font-weight:800;font-size:0.95rem;
+  cursor:pointer;letter-spacing:0.05em;
+  transition:opacity 0.2s;margin-top:4px;
+}
+#login-btn:hover{opacity:0.88;}
+#login-err{
+  color:#f87171;font-size:0.78rem;
+  text-align:center;margin-top:10px;
+  min-height:18px;
+}
+#login-tg{
+  text-align:center;
+  margin-top:20px;
+  padding-top:18px;
+  border-top:1px solid rgba(255,255,255,0.07);
+  font-size:0.75rem;
+  color:rgba(255,255,255,0.35);
+  line-height:1.7;
+}
+#login-tg span{color:#38bdf8;}
+#login-tg a{color:#38bdf8;text-decoration:none;}
+
+/* ── Admin panel ── */
+#admin-panel{
+  background:rgba(255,200,80,0.05);
+  border:1px solid rgba(255,200,80,0.2);
+  border-radius:16px;
+  padding:20px 24px;
+  margin-bottom:28px;
+  display:none;
+}
+#admin-panel .ap-title{
+  font-size:0.68rem;letter-spacing:0.2em;
+  color:rgba(255,200,80,0.6);text-transform:uppercase;
+  margin-bottom:12px;
+}
+#admin-panel .ap-count{
+  font-size:2.4rem;font-weight:800;color:#ffd700;
+  display:inline-block;margin-right:12px;
+  line-height:1;
+}
+#admin-panel .ap-label{
+  font-size:0.82rem;color:rgba(255,255,255,0.45);
+  vertical-align:middle;
+}
+#admin-panel .ap-list{
+  margin-top:14px;
+  max-height:160px;overflow-y:auto;
+  display:flex;flex-wrap:wrap;gap:6px;
+}
+#admin-panel .ap-user{
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:6px;
+  padding:4px 10px;
+  font-size:0.72rem;color:rgba(255,255,255,0.6);
+}
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+
+<div id="topbar">
+  <div id="topbar-title">✦ Мұғалімдер Платформасы</div>
+  <div id="topbar-right">
+    <div id="user-email"></div>
+    <button id="logout-btn" onclick="doLogout()">Шығу</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="admin-panel">
+    <div class="ap-title">👑 Администратор панелі</div>
+    <span class="ap-count" id="ap-count">—</span>
+    <span class="ap-label">тіркелген мұғалім</span>
+    <div class="ap-list" id="ap-list"></div>
+  </div>
+  <div id="section-title">Ашық сабақ құралдары</div>
+  <div id="section-sub">Ойындар мен белсенділіктер</div>
+  <div id="section-desc">кез келген ойынды өз сабағына өзгертіп алсаң болады</div>
+  <div id="grid"></div>
+
+  <!-- Жаңа ойын CTA -->
+  <div style="margin-top:52px;text-align:center;padding:44px 28px;background:rgba(150,51,234,0.06);border:1px solid rgba(150,51,234,0.2);border-radius:24px;">
+    <div style="font-size:2.2rem;margin-bottom:14px">✨</div>
+    <div style="font-size:1.35rem;font-weight:800;color:#fff;margin-bottom:10px;letter-spacing:0.02em;">Жаңа ойын қалайсыз ба?</div>
+    <div style="font-size:0.9rem;color:rgba(255,255,255,0.45);margin-bottom:8px;line-height:1.7;">Қандай ойын қосуымды қалайсыз?</div>
+    <div style="font-size:0.9rem;color:rgba(200,150,255,0.7);margin-bottom:26px;line-height:1.7;font-style:italic;">Instagram-ға өз ойыныңызды жазыңыз —<br>мен сол ойынды жасап қосамын!</div>
+    <a href="https://www.instagram.com/ai_aisha_kz?igsh=NHV4ZW85cGxtNHJr" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#9333ea,#c026d3);color:#fff;padding:14px 36px;border-radius:50px;font-weight:800;font-size:0.9rem;text-decoration:none;letter-spacing:0.05em;box-shadow:0 8px 28px rgba(147,51,234,0.35);">📸 Instagram-ға жазу</a>
+  </div>
+</div>
+
+<!-- Login overlay -->
+<div id="login-overlay">
+  <div id="login-box">
+    <h2>КІРУ</h2>
+    <div class="sub">Мұғалімдер платформасы</div>
+    <input class="inp" id="em" type="text" placeholder="Атыңыз (кез келген ат)" autocomplete="username">
+    <input class="inp" id="pw" type="password" placeholder="Пароль" autocomplete="current-password">
+    <button id="login-btn" onclick="doLogin()">Кіру</button>
+    <div id="login-err"></div>
+    <div id="login-tg">
+      Тіркелу үшін Telegram ботын қолданыңыз:<br>
+      <a href="https://t.me/studentgameBot" target="_blank">@studentgameBot</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:5000';
+
+const GAMES = [
+  {
+    type:'login-lamp', file:'login-lamp.html', emoji:'💡',
+    name:'Шам Логині', desc:'Жарық лампа стиліндегі кіру беті',
+    c1:'#92400e', c2:'#f59e0b'
+  },
+  {
+    type:'reveal', file:'reveal.html', emoji:'✨',
+    name:'Reveal — Ашу', desc:'Тырнақшамен жасырын мәтін ашылады',
+    c1:'#4c1d95', c2:'#7c3aed'
+  },
+  {
+    type:'logo3d', file:'logo3d.html', emoji:'🌐',
+    name:'3D Логотип', desc:'Үш өлшемді айналмалы логотип',
+    c1:'#164e63', c2:'#0891b2'
+  },
+  {
+    type:'card3d', file:'card3d.html', emoji:'🃏',
+    name:'3D Карточка', desc:'Алтын бұрылатын карточка',
+    c1:'#78350f', c2:'#d97706'
+  },
+  {
+    type:'book', file:'book.html', emoji:'📚',
+    name:'Кітап', desc:'Беттер аударылатын 3D кітап',
+    c1:'#14532d', c2:'#16a34a'
+  },
+  {
+    type:'planet', file:'planet.html', emoji:'🪐',
+    name:'Планеталар', desc:'Планета навигациясы — пәндер таңдау',
+    c1:'#1e1b4b', c2:'#4f46e5'
+  },
+  {
+    type:'quiz', file:'quiz.html', emoji:'❓',
+    name:'Математика Викторинасы', desc:'30 допты математика есептері',
+    c1:'#064e3b', c2:'#059669'
+  },
+  {
+    type:'names', file:'names.html', emoji:'👥',
+    name:'Star Trek Аттар', desc:'Аттар экранда жылжып үлкейеді',
+    c1:'#0c4a6e', c2:'#0284c7'
+  },
+  {
+    type:'subjects', file:'subjects.html', emoji:'📐',
+    name:'Пәндер Карусели', desc:'Пәндер карточкалары сырғиды',
+    c1:'#831843', c2:'#db2777'
+  },
+  {
+    type:'poets', file:'poets.html', emoji:'🌟',
+    name:'Ақындар Галереясы', desc:'Қазақ ақындары айналмалы шеңбер',
+    c1:'#1e3a5f', c2:'#2563eb'
+  },
+  {
+    type:'instagram', file:'https://www.instagram.com/ai_aisha_kz?igsh=NHV4ZW85cGxtNHJr',
+    emoji:'📸',
+    name:'Жаңа ойын қосу', desc:'Өз ойыныңызды Instagram-ға жазыңыз — мен оны жасап қосамын!',
+    c1:'#5b21b6', c2:'#9333ea', ig:true
+  },
+];
+
+/* ── Stars ── */
+const sc = document.getElementById('stars');
+const sctx = sc.getContext('2d');
+function rsz(){ sc.width=innerWidth; sc.height=innerHeight; }
+rsz(); window.addEventListener('resize',rsz);
+const ST = Array.from({length:250},()=>({
+  x:Math.random()*innerWidth, y:Math.random()*innerHeight,
+  r:Math.random()*1.3+0.1, a:0.1+Math.random()*0.8,
+  t:Math.random()*Math.PI*2, s:0.002+Math.random()*0.006
+}));
+(function sl(){
+  sctx.clearRect(0,0,sc.width,sc.height);
+  ST.forEach(s=>{
+    s.t+=s.s;
+    sctx.beginPath();sctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    sctx.fillStyle=`rgba(200,215,255,${(s.a*(0.5+0.5*Math.sin(s.t))).toFixed(3)})`;
+    sctx.fill();
+  });
+  requestAnimationFrame(sl);
+})();
+
+/* ── Build grid ── */
+const grid = document.getElementById('grid');
+GAMES.forEach(g=>{
+  const card = document.createElement('div');
+  card.className = g.ig ? 'game-card card-ig' : 'game-card';
+  if(g.ig){
+    card.innerHTML = `
+      <div class="card-thumb" style="background:linear-gradient(145deg,${g.c1},${g.c2})">
+        <span style="position:relative;z-index:1">${g.emoji}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-name">${g.name}</div>
+        <div class="card-desc">${g.desc}</div>
+        <div class="card-btns">
+          <button class="btn-open" style="--c1:${g.c1};--c2:${g.c2}" onclick="window.open('${g.file}','_blank')">📸 Instagram</button>
+        </div>
+      </div>`;
+  } else {
+    card.innerHTML = `
+      <div class="card-thumb" style="background:linear-gradient(145deg,${g.c1},${g.c2})">
+        <span style="position:relative;z-index:1">${g.emoji}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-name">${g.name}</div>
+        <div class="card-desc">${g.desc}</div>
+        <div class="card-btns">
+          <button class="btn-open" style="--c1:${g.c1};--c2:${g.c2}" onclick="openGame('${g.file}')">▶ Ашу</button>
+        </div>
+      </div>`;
+  }
+  grid.appendChild(card);
+});
+
+function openGame(file){
+  window.open(`${file}?edit=1`, '_blank');
+}
+
+/* ── Auth ── */
+const ADMIN_EMAIL = 'test@test.com';
+const token = localStorage.getItem('teacher_token');
+const email = localStorage.getItem('teacher_email');
+
+function checkAuth(){
+  if(token && email){
+    document.getElementById('login-overlay').style.display='none';
+    document.getElementById('user-email').textContent = email;
+    if(email === ADMIN_EMAIL) loadAdminStats();
+  }
+}
+checkAuth();
+
+async function loadAdminStats(){
+  try{
+    const r = await fetch(`${API}/api/admin/stats`,{headers:{'X-Token':token}});
+    const d = await r.json();
+    if(d.total === undefined) return;
+    document.getElementById('ap-count').textContent = d.total;
+    const list = document.getElementById('ap-list');
+    list.innerHTML = '';
+    (d.users||[]).forEach(u=>{
+      const span = document.createElement('span');
+      span.className = 'ap-user';
+      span.textContent = u.email;
+      list.appendChild(span);
+    });
+    document.getElementById('admin-panel').style.display = 'block';
+  } catch(e){}
+}
+
+async function doLogin(){
+  const em = document.getElementById('em').value.trim();
+  const pw = document.getElementById('pw').value.trim();
+  const err = document.getElementById('login-err');
+  err.textContent = '';
+  if(!em||!pw){err.textContent='Атыңыз және пароль жазыңыз';return;}
+  try{
+    const r = await fetch(`${API}/api/login`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:em,password:pw})
+    });
+    const d = await r.json();
+    if(d.success){
+      localStorage.setItem('teacher_token',d.token);
+      localStorage.setItem('teacher_email',d.email);
+      document.getElementById('login-overlay').style.display='none';
+      document.getElementById('user-email').textContent=d.email;
+      if(d.email === ADMIN_EMAIL) loadAdminStats();
+    } else {
+      err.textContent = d.error || 'Қате';
+    }
+  } catch(e){
+    err.textContent = 'Сервермен байланыс жоқ';
+  }
+}
+
+function doLogout(){
+  const t = localStorage.getItem('teacher_token');
+  if(t) fetch(`${API}/api/logout`,{method:'POST',headers:{'X-Token':t}}).catch(()=>{});
+  localStorage.removeItem('teacher_token');
+  localStorage.removeItem('teacher_email');
+  location.reload();
+}
+
+document.getElementById('em').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('pw').focus(); });
+document.getElementById('pw').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+</script>
+</body>
+</html>

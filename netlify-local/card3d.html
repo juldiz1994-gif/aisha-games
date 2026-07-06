@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ai_aisha_kz — 3D Card</title>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=DM+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: radial-gradient(ellipse at center, #1a1008 0%, #0a0804 60%, #050402 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: none;
+    }
+
+    /* ── Жасалған курсор ── */
+    #cursor {
+      position: fixed;
+      width: 12px;
+      height: 12px;
+      background: rgba(212,175,55,0.9);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 100;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 12px rgba(212,175,55,0.8), 0 0 24px rgba(212,175,55,0.4);
+      transition: transform 0.05s;
+    }
+    #cursor-ring {
+      position: fixed;
+      width: 36px;
+      height: 36px;
+      border: 1.5px solid rgba(212,175,55,0.45);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 99;
+      transform: translate(-50%, -50%);
+      transition: left 0.12s ease, top 0.12s ease;
+    }
+
+    /* ── Scene ── */
+    .scene {
+      perspective: 900px;
+      perspective-origin: 50% 50%;
+      width: 340px;
+      height: 440px;
+    }
+
+    /* ── Card ── */
+    .card {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      border-radius: 20px;
+      background: linear-gradient(145deg, #1a1206, #0f0b04, #1a1206);
+      border: 1px solid rgba(212,175,55,0.25);
+      box-shadow:
+        0 0 0 1px rgba(212,175,55,0.08),
+        0 30px 80px rgba(0,0,0,0.9),
+        inset 0 1px 0 rgba(212,175,55,0.15);
+      will-change: transform;
+      transition: transform 0.05s linear;
+      overflow: hidden;
+      cursor: none;
+    }
+
+    /* ── Жарық блик (highlight) ── */
+    .card-shine {
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      background: radial-gradient(
+        ellipse at var(--mx, 50%) var(--my, 50%),
+        rgba(212,175,55,0.12) 0%,
+        rgba(212,175,55,0.04) 35%,
+        transparent 70%
+      );
+      pointer-events: none;
+      z-index: 3;
+      transition: background 0.05s linear;
+    }
+
+    /* ── Декор сызықтар ── */
+    .card-lines {
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      pointer-events: none;
+      z-index: 2;
+      overflow: hidden;
+    }
+    .card-lines::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(212,175,55,0.5), transparent);
+    }
+    .card-lines::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent);
+    }
+
+    /* ── Фон нүктелер ── */
+    .card-dots {
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(circle, rgba(212,175,55,0.08) 1px, transparent 1px);
+      background-size: 22px 22px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* ── Негізгі контент ── */
+    .card-content {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.2rem;
+      z-index: 4;
+      padding: 2rem;
+    }
+
+    /* ── ai_aisha_kz жазуы ── */
+    .card-title {
+      font-family: 'Dancing Script', cursive;
+      font-size: 3.2rem;
+      font-weight: 700;
+      color: #D4AF37;
+      text-align: center;
+      letter-spacing: 0.02em;
+      line-height: 1.1;
+      text-shadow:
+        0 0 10px rgba(212,175,55,1),
+        0 0 25px rgba(212,175,55,0.8),
+        0 0 50px rgba(212,175,55,0.5),
+        0 0 100px rgba(212,175,55,0.25);
+      will-change: text-shadow;
+    }
+
+    /* ── Декор жолақтар ── */
+    .card-divider {
+      width: 60%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(212,175,55,0.6), transparent);
+    }
+
+    /* ── Sub text ── */
+    .card-sub {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.25em;
+      color: rgba(212,175,55,0.5);
+      text-transform: uppercase;
+    }
+
+    /* ── Бұрыш нүктелері ── */
+    .corner {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-color: rgba(212,175,55,0.4);
+      border-style: solid;
+      z-index: 5;
+    }
+    .corner-tl { top: 14px; left: 14px;  border-width: 1.5px 0 0 1.5px; }
+    .corner-tr { top: 14px; right: 14px; border-width: 1.5px 1.5px 0 0; }
+    .corner-bl { bottom: 14px; left: 14px;  border-width: 0 0 1.5px 1.5px; }
+    .corner-br { bottom: 14px; right: 14px; border-width: 0 1.5px 1.5px 0; }
+
+    /* ── Нөмір ── */
+    .card-num {
+      position: absolute;
+      bottom: 22px;
+      right: 22px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      color: rgba(212,175,55,0.3);
+      z-index: 5;
+    }
+
+    /* ── Glowing орбита ── */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      filter: blur(40px);
+      z-index: 0;
+    }
+    .orb-1 {
+      width: 180px; height: 180px;
+      background: radial-gradient(circle, rgba(212,175,55,0.18), transparent 70%);
+      top: -40px; left: -40px;
+    }
+    .orb-2 {
+      width: 140px; height: 140px;
+      background: radial-gradient(circle, rgba(212,175,55,0.12), transparent 70%);
+      bottom: -30px; right: -30px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="cursor"></div>
+  <div id="cursor-ring"></div>
+
+  <div class="scene" id="scene">
+    <div class="card" id="card">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="card-dots"></div>
+      <div class="card-lines"></div>
+      <div class="card-shine" id="shine"></div>
+
+      <div class="corner corner-tl"></div>
+      <div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div>
+      <div class="corner corner-br"></div>
+
+      <div class="card-content">
+        <div class="card-sub" id="cd-sub">AI · STUDIO · KZ</div>
+        <div class="card-divider"></div>
+        <div class="card-title" id="cd-name">ai_aisha_kz</div>
+        <div class="card-divider"></div>
+        <div class="card-sub" id="cd-question" style="font-size:0.72rem;line-height:1.5;letter-spacing:0.04em;text-transform:none;color:rgba(212,175,55,0.7);max-width:240px;text-align:center">✦ &nbsp; ✦ &nbsp; ✦</div>
+      </div>
+
+      <div class="card-num" id="cd-num">01 / 01</div>
+    </div>
+  </div>
+
+  <script>
+    const card     = document.getElementById('card');
+    const shine    = document.getElementById('shine');
+    const scene    = document.getElementById('scene');
+    const curEl    = document.getElementById('cursor');
+    const ringEl   = document.getElementById('cursor-ring');
+
+    const MAX_ROT  = 22;   // максималды еңкею бұрышы (градус)
+    const SMOOTH   = 0.08; // интерполяция жылдамдығы
+
+    let targetRX = 0, targetRY = 0;
+    let currentRX = 0, currentRY = 0;
+
+    let mouseX = window.innerWidth  / 2;
+    let mouseY = window.innerHeight / 2;
+
+    // Мышка координатасын сақтаймыз
+    document.addEventListener('mousemove', e => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+
+      // Курсор
+      curEl.style.left  = mouseX + 'px';
+      curEl.style.top   = mouseY + 'px';
+
+      // Ring — аздап кешігіп
+      ringEl.style.left = mouseX + 'px';
+      ringEl.style.top  = mouseY + 'px';
+    });
+
+    // RAF — бірқалыпты анимация
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const rect = scene.getBoundingClientRect();
+      const cx   = rect.left + rect.width  / 2;
+      const cy   = rect.top  + rect.height / 2;
+
+      // Картаның орталығынан қашықтық (-1 … +1)
+      const dx = (mouseX - cx) / (rect.width  / 2);
+      const dy = (mouseY - cy) / (rect.height / 2);
+
+      // Мақсат бұрышы
+      targetRY =  dx * MAX_ROT;
+      targetRX = -dy * MAX_ROT;
+
+      // Жылжымалы интерполяция (lerp)
+      currentRX += (targetRX - currentRX) * SMOOTH;
+      currentRY += (targetRY - currentRY) * SMOOTH;
+
+      card.style.transform =
+        `rotateX(${currentRX}deg) rotateY(${currentRY}deg) scale3d(1.02,1.02,1.02)`;
+
+      // Жарық нүктесі (shine)
+      const mx = ((mouseX - rect.left) / rect.width  * 100).toFixed(1) + '%';
+      const my = ((mouseY - rect.top)  / rect.height * 100).toFixed(1) + '%';
+      shine.style.setProperty('--mx', mx);
+      shine.style.setProperty('--my', my);
+    }
+
+    animate();
+
+    // Touch қолдауы
+    document.addEventListener('touchmove', e => {
+      e.preventDefault();
+      const t = e.touches[0];
+      mouseX = t.clientX;
+      mouseY = t.clientY;
+    }, { passive: false });
+  window.GAME_TYPE  = 'card3d';
+  window.GAME_TITLE = '3D Карточка';
+
+  let CD_STUDENTS = [];
+  let cdIdx = 0;
+
+  function showCdStudent(i){
+    const s = CD_STUDENTS[i];
+    if(!s) return;
+    document.getElementById('cd-name').textContent = s.name || 'ai_aisha_kz';
+    document.getElementById('cd-question').textContent = s.question || '✦   ✦   ✦';
+    document.getElementById('cd-sub').textContent = 'ОҚУШЫ';
+    document.getElementById('cd-num').textContent =
+      String(i+1).padStart(2,'0') + ' / ' + String(CD_STUDENTS.length).padStart(2,'0');
+  }
+
+  window.getGameConfig  = () => ({ title: '3D Карточка', students: CD_STUDENTS.slice() });
+  window.setGameConfig  = function(cfg){
+    if(cfg && cfg.students && cfg.students.length){
+      CD_STUDENTS = cfg.students;
+      cdIdx = 0;
+      showCdStudent(0);
+      showCdNextBtn();
+    }
+  };
+
+  function showCdNextBtn(){
+    if(CD_STUDENTS.length < 2) return;
+    if(document.getElementById('cd-next-btn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'cd-next-btn';
+    btn.textContent = '▶ Келесі';
+    btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:50;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.4);color:#D4AF37;padding:10px 24px;border-radius:50px;font-size:0.88rem;font-weight:700;cursor:pointer;letter-spacing:0.06em;';
+    btn.onclick = ()=>{
+      cdIdx = (cdIdx+1) % CD_STUDENTS.length;
+      showCdStudent(cdIdx);
+    };
+    document.body.appendChild(btn);
+  }
+  </script>
+<script src="game-edit.js"></script>
+</body>
+</html>

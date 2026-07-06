@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Қазақ Ұлдарының Аттары</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{
+  width:100vw;height:100vh;overflow:hidden;
+  background:#03040e;
+  font-family:'Impact','Arial Black',sans-serif;
+}
+
+/* Stars */
+#stars{position:fixed;inset:0;z-index:0;pointer-events:none;}
+
+/* Question popup */
+#nm-overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.75);
+  backdrop-filter:blur(8px);
+  display:flex;align-items:center;justify-content:center;
+  z-index:200;
+  opacity:0;pointer-events:none;
+  transition:opacity 0.3s;
+}
+#nm-overlay.show{opacity:1;pointer-events:all;}
+#nm-popup{
+  background:linear-gradient(145deg,#0e102a,#060816);
+  border:1px solid rgba(255,200,100,0.3);
+  border-radius:20px;
+  padding:36px 40px;
+  max-width:480px;width:92%;
+  text-align:center;
+  position:relative;
+  box-shadow:0 20px 60px rgba(0,0,0,0.7),0 0 40px rgba(255,200,80,0.1);
+}
+#nm-name{
+  font-size:1.8rem;font-weight:900;
+  color:#ffd700;letter-spacing:0.1em;
+  margin-bottom:18px;
+}
+#nm-q{
+  font-size:1.1rem;color:#e8e8e8;
+  line-height:1.55;margin-bottom:24px;
+}
+#nm-reveal-btn{
+  background:linear-gradient(135deg,rgba(255,200,80,0.2),rgba(255,200,80,0.1));
+  border:1px solid rgba(255,200,80,0.4);
+  color:#ffd700;
+  padding:10px 32px;border-radius:50px;
+  font-size:0.9rem;font-weight:700;
+  cursor:pointer;letter-spacing:0.06em;
+  transition:background 0.2s;
+}
+#nm-reveal-btn:hover{background:rgba(255,200,80,0.25);}
+#nm-ans{
+  margin-top:16px;
+  font-size:1.15rem;font-weight:700;
+  color:#4ade80;
+  min-height:26px;
+  opacity:0;transition:opacity 0.4s;
+}
+#nm-ans.show{opacity:1;}
+#nm-close{
+  position:absolute;top:14px;right:18px;
+  background:none;border:none;
+  color:rgba(255,255,255,0.4);font-size:1.3rem;cursor:pointer;
+}
+#nm-close:hover{color:#fff;}
+
+/* Ground */
+#ground{
+  position:fixed;bottom:0;left:0;right:0;height:30%;
+  background:linear-gradient(180deg,#06081a 0%,#030410 100%);
+  z-index:1;
+}
+
+/* Glow line at horizon */
+#gline{
+  position:fixed;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,
+    transparent 0%,
+    rgba(0,180,255,0.5) 20%,
+    rgba(0,240,200,1) 50%,
+    rgba(0,180,255,0.5) 80%,
+    transparent 100%);
+  box-shadow:0 0 20px 6px rgba(0,200,255,0.4);
+  z-index:6;
+}
+
+/* Big name — behind characters */
+#nameDisplay{
+  position:fixed;
+  left:50%;top:28%;
+  transform:translate(-50%,-50%);
+  white-space:nowrap;
+  z-index:8;
+  pointer-events:none;
+  font-size:clamp(6rem,18vw,14rem);
+  letter-spacing:0.08em;
+  color:#ffe050;
+  text-shadow:
+    0 0 30px rgba(255,200,0,0.9),
+    0 0 80px rgba(255,120,0,0.6),
+    0 0 160px rgba(255,60,0,0.3);
+  opacity:0;
+  transition:opacity 0.3s ease, letter-spacing 0.3s ease;
+}
+#nameDisplay.show{
+  opacity:1;
+  letter-spacing:0.15em;
+}
+
+/* Character stage sits on the glow line */
+#stage{
+  position:fixed;left:0;right:0;
+  height:0;overflow:visible;
+  z-index:10;
+}
+
+/* Each person */
+.person{
+  position:absolute;
+  bottom:0;
+  transform-origin:bottom center;
+  will-change:transform,filter;
+}
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+<div id="ground"></div>
+<div id="gline"></div>
+<div id="nameDisplay"></div>
+<div id="stage"></div>
+
+<div id="nm-overlay">
+  <div id="nm-popup">
+    <button id="nm-close" onclick="closeNmPopup()">✕</button>
+    <div id="nm-name"></div>
+    <div id="nm-q"></div>
+    <button id="nm-reveal-btn" onclick="revealNmAns()">👁 Жауабын ашу</button>
+    <div id="nm-ans" id="nm-ans"></div>
+  </div>
+</div>
+
+<script>
+const W = ()=>innerWidth, H = ()=>innerHeight;
+const GPCT = 0.70; // ground line at 70% from top
+
+function posEl(){
+  const gy = H()*GPCT;
+  document.getElementById('gline').style.top = gy+'px';
+  document.getElementById('stage').style.top = gy+'px';
+  document.getElementById('nameDisplay').style.top = (gy*0.42)+'px';
+}
+posEl();
+window.addEventListener('resize', posEl);
+
+/* ── Stars ── */
+const sc = document.getElementById('stars');
+const cx = sc.getContext('2d');
+function rsz(){ sc.width=W(); sc.height=H(); }
+rsz();
+window.addEventListener('resize',rsz);
+const ST = Array.from({length:300},()=>({
+  x:Math.random()*W(), y:Math.random()*H()*GPCT,
+  r:Math.random()*1.4+0.1,
+  a:0.1+Math.random()*0.9,
+  t:Math.random()*Math.PI*2,
+  s:0.002+Math.random()*0.008
+}));
+(function sloop(){
+  cx.clearRect(0,0,W(),H());
+  ST.forEach(s=>{
+    s.t+=s.s;
+    cx.beginPath(); cx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    cx.fillStyle=`rgba(200,215,255,${(s.a*(0.5+0.5*Math.sin(s.t))).toFixed(3)})`;
+    cx.fill();
+  });
+  requestAnimationFrame(sloop);
+})();
+
+/* ── GAME CONFIG INTERFACE ── */
+window.GAME_TYPE  = 'names';
+window.GAME_TITLE = 'Star Trek Аттар';
+
+let NM_STUDENTS = []; // [{name, q, a}]
+
+window.getGameConfig  = () => ({
+  students: NM_STUDENTS.length
+    ? NM_STUDENTS.slice()
+    : NAMES.map(n=>({name:n, q:'', a:''}))
+});
+window.setGameConfig  = function(cfg){
+  if(cfg && cfg.students && cfg.students.length){
+    NM_STUDENTS = cfg.students;
+    NAMES.length = 0;
+    cfg.students.forEach(s => NAMES.push(s.name ? s.name.toUpperCase() : ''));
+    nameIdx = 0;
+  }
+};
+
+/* ── Сұрақ попап ── */
+const nmOverlay   = document.getElementById('nm-overlay');
+const nmNameEl    = document.getElementById('nm-name');
+const nmQEl       = document.getElementById('nm-q');
+const nmAnsEl     = document.querySelector('#nm-ans');
+let activeChar    = null;
+
+function openNmPopup(name, charObj){
+  activeChar = charObj;
+  const student = NM_STUDENTS.find(s=> s.name && s.name.toUpperCase() === name.toUpperCase());
+  nmNameEl.textContent = name;
+  if(student && student.q){
+    nmQEl.textContent = student.q;
+    nmAnsEl.textContent = student.a || '';
+    nmAnsEl.classList.remove('show');
+    document.getElementById('nm-reveal-btn').style.display = student.a ? 'inline-block' : 'none';
+  } else {
+    nmQEl.textContent = 'Сұрақ қосылмаған';
+    nmAnsEl.textContent = '';
+    document.getElementById('nm-reveal-btn').style.display = 'none';
+  }
+  nmOverlay.classList.add('show');
+}
+function closeNmPopup(){
+  nmOverlay.classList.remove('show');
+  if(activeChar){
+    const c = activeChar;
+    activeChar = null;
+    c.el.style.transition = 'opacity 0.5s, transform 0.5s';
+    c.el.style.opacity = '0';
+    c.el.style.transform = 'translateX(-50%) scale(0)';
+    setTimeout(()=>{
+      c.el.remove();
+      const idx = chars.indexOf(c);
+      if(idx >= 0) chars.splice(idx, 1);
+    }, 520);
+  }
+}
+function revealNmAns(){ nmAnsEl.classList.add('show'); }
+nmOverlay.addEventListener('click', e=>{ if(e.target===nmOverlay) closeNmPopup(); });
+
+/* ── Names & Colors ── */
+const NAMES = [
+  'АЙБЕК','АРМАН','ДӘУРЕН','ЕРЛАН','НҰРЛАН',
+  'БАУЫРЖАН','ҚАНАТ','ТИМУР','АЛМАС','АСҚАР',
+  'БЕРІК','ДАНИЯЛ','ЕРЖАН','МИРАС','ҰЛАН',
+  'АБАЙ','ЖАНДОС','МАРАТ','ДИАС','СЕЙТКАЛИ'
+];
+
+const COLORS = [
+  {shirt:'#2855c8',pants:'#121e60',skin:'#d4ac84',hair:'#1e1008'},
+  {shirt:'#b82c2c',pants:'#6a1010',skin:'#c8a278',hair:'#160c06'},
+  {shirt:'#b89210',pants:'#6a4e08',skin:'#d8af87',hair:'#1a1006'},
+  {shirt:'#1c7e4a',pants:'#0a4424',skin:'#cda57d',hair:'#180e06'},
+  {shirt:'#602da0',pants:'#341260',skin:'#d2aa82',hair:'#1c1008'},
+  {shirt:'#126898',pants:'#083a60',skin:'#c8a278',hair:'#160c04'},
+  {shirt:'#984410',pants:'#582008',skin:'#d2aa82',hair:'#1c1008'},
+];
+
+/* ── Static standing figure SVG ── */
+function makeFigure(c){
+  return `<svg width="100" height="200" viewBox="0 0 100 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Shadow -->
+  <ellipse cx="50" cy="197" rx="36" ry="7" fill="rgba(0,0,0,0.5)"/>
+  <!-- Left leg -->
+  <rect x="26" y="108" width="20" height="82" rx="10" fill="${c.pants}"/>
+  <!-- Right leg -->
+  <rect x="54" y="108" width="20" height="82" rx="10" fill="${c.pants}"/>
+  <!-- Left boot -->
+  <ellipse cx="36" cy="192" rx="20" ry="8" fill="#0c0c1c"/>
+  <!-- Right boot -->
+  <ellipse cx="64" cy="192" rx="20" ry="8" fill="#0c0c1c"/>
+  <!-- Body/torso -->
+  <path d="M18,50 Q20,42 50,40 Q80,42 82,50 L85,112 L15,112 Z" fill="${c.shirt}"/>
+  <!-- Shirt line center -->
+  <line x1="50" y1="40" x2="50" y2="112" stroke="rgba(255,255,255,0.1)" stroke-width="2"/>
+  <!-- Belt -->
+  <rect x="15" y="106" width="70" height="9" rx="3" fill="rgba(0,0,0,0.5)"/>
+  <!-- Left arm -->
+  <rect x="5" y="50" width="16" height="62" rx="8" fill="${c.shirt}"/>
+  <!-- Right arm -->
+  <rect x="79" y="50" width="16" height="62" rx="8" fill="${c.shirt}"/>
+  <!-- Neck -->
+  <rect x="41" y="32" width="18" height="13" rx="7" fill="${c.skin}"/>
+  <!-- Head -->
+  <ellipse cx="50" cy="20" rx="20" ry="21" fill="${c.skin}"/>
+  <!-- Hair -->
+  <path d="M30,14 Q32,0 50,0 Q68,0 70,14 Q68,6 50,6 Q32,6 30,14 Z" fill="${c.hair}"/>
+  <!-- Eyes -->
+  <ellipse cx="43" cy="20" rx="3" ry="3.5" fill="rgba(20,12,5,0.6)"/>
+  <ellipse cx="57" cy="20" rx="3" ry="3.5" fill="rgba(20,12,5,0.6)"/>
+  <!-- Mouth -->
+  <path d="M41,28 Q50,33 59,28" stroke="rgba(20,12,5,0.3)" stroke-width="1.5" fill="none"/>
+</svg>`;
+}
+
+/* ── Stage & animation ── */
+const stage   = document.getElementById('stage');
+const nameDsp = document.getElementById('nameDisplay');
+
+const SPACING   = 240;
+const SPEED     = 1.6;
+const MAX_DIST  = 300;
+const SCALE_MAX = 2.8;
+const SHOW_SC   = 1.9;
+
+let chars   = [];
+let nameIdx = 0;
+let curName = null;
+
+function getScale(dist){
+  const t = Math.max(0, 1 - dist/MAX_DIST);
+  return 1 + (SCALE_MAX-1)*t*t;
+}
+
+function makeChar(x){
+  const name  = NAMES[nameIdx % NAMES.length];
+  const color = COLORS[nameIdx % COLORS.length];
+  nameIdx++;
+  const el = document.createElement('div');
+  el.className = 'person';
+  el.innerHTML = makeFigure(color);
+  el.style.cursor = 'pointer';
+  stage.appendChild(el);
+  const obj = {el, name, x};
+  el.addEventListener('click', ()=>{ openNmPopup(name, obj); });
+  return obj;
+}
+
+/* Init */
+const count = Math.ceil(W()/SPACING) + 5;
+for(let i=0; i<count && i<NAMES.length; i++){
+  chars.push(makeChar(i * SPACING));
+}
+
+/* Main loop */
+function loop(){
+  const cx2 = W()/2;
+  let rightEdge = -Infinity;
+
+  chars.forEach(c=>{
+    c.x -= SPEED;
+    if(c.x > rightEdge) rightEdge = c.x;
+  });
+
+  // Remove off-screen left
+  for(let i=chars.length-1; i>=0; i--){
+    if(chars[i].x < -200){
+      chars[i].el.remove();
+      chars.splice(i,1);
+    }
+  }
+
+  // Spawn new on right
+  if(rightEdge < W() + SPACING*1.5){
+    chars.push(makeChar(rightEdge + SPACING));
+  }
+
+  // Scale & brightness each character
+  let bestC = null, bestSc = 0;
+
+  chars.forEach(c=>{
+    const dist = Math.abs(c.x - cx2);
+    const sc   = getScale(dist);
+    const br   = 0.5 + 0.6*((sc-1)/(SCALE_MAX-1));
+    c.el.style.left      = c.x+'px';
+    c.el.style.transform = `translateX(-50%) scale(${sc.toFixed(4)})`;
+    c.el.style.zIndex    = Math.round(sc*5);
+    c.el.style.filter    = `brightness(${br.toFixed(3)})`;
+    if(sc > bestSc){ bestSc=sc; bestC=c; }
+  });
+
+  // Name display
+  if(bestC && bestSc >= SHOW_SC){
+    if(curName !== bestC.name){
+      curName = bestC.name;
+      nameDsp.textContent = curName;
+    }
+    nameDsp.classList.add('show');
+  } else {
+    nameDsp.classList.remove('show');
+  }
+
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+<script src="game-edit.js"></script>
+</body>
+</html>

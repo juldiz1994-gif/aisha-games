@@ -1,0 +1,7 @@
+{
+  "bot_token": "8965267353:AAGhsV9OLOhjBGx9e2D8SshLm1W7oCPTOQs",
+  "hub_url": "http://localhost:5000",
+  "api_url": "http://localhost:5000",
+  "admin_email": "test@test.com",
+  "admin_tg_id": 0
+}

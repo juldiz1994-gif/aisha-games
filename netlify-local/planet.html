@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ғаламшар таңдаушы — Planet Picker</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+html,body{
+  width:100%;height:100vh;overflow:hidden;
+  background:#04040e;
+  font-family:'Segoe UI',system-ui,sans-serif;
+  color:#fff;
+  user-select:none;
+}
+
+/* ── Жұлдыздар фоны ── */
+#stars{
+  position:fixed;inset:0;z-index:0;
+  background:
+    radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 25% 40%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 50% 8%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1px 1px at 70% 22%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 85% 55%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 35% 70%, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 60% 35%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 15% 80%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 90% 10%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 45% 90%, rgba(255,255,255,0.3), transparent),
+    radial-gradient(2px 2px at 5% 50%,  rgba(255,255,255,0.4), transparent),
+    radial-gradient(2px 2px at 80% 75%, rgba(255,255,255,0.3), transparent),
+    radial-gradient(1px 1px at 55% 60%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 30% 25%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 75% 45%, rgba(255,255,255,0.7), transparent);
+}
+
+/* ── Ғаламшар шары ── */
+#sphere-wrap{
+  position:fixed;
+  bottom:-30vw;left:50%;
+  transform:translateX(-50%);
+  width:90vw;height:90vw;
+  z-index:2;
+}
+
+#sphere{
+  width:100%;height:100%;
+  border-radius:50%;
+  transition:background 0.9s ease, box-shadow 0.9s ease;
+  position:relative;
+  overflow:visible;
+}
+
+/* Saturn ring */
+#ring{
+  display:none;
+  position:absolute;
+  width:145%;height:30%;
+  border-radius:50%;
+  border:10px solid rgba(210,185,120,0.55);
+  box-shadow:
+    0 0 0 18px rgba(195,170,105,0.3),
+    0 0 0 36px rgba(180,155,90,0.15);
+  top:36%;left:-22.5%;
+  transform:rotateX(72deg);
+  pointer-events:none;
+}
+
+/* ── Атмосфера жарығы ── */
+#atmo{
+  position:fixed;
+  bottom:0;left:50%;
+  transform:translateX(-50%);
+  width:120vw;height:55vh;
+  pointer-events:none;
+  z-index:1;
+  transition:background 0.9s ease;
+}
+
+/* ── Жоғарғы ақпарат панелі ── */
+#info{
+  position:fixed;
+  top:0;left:0;right:0;
+  padding:22px 30px 0;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  z-index:10;
+}
+
+#left-info{}
+
+#pname{
+  font-size:2rem;font-weight:300;
+  letter-spacing:0.04em;
+  transition:opacity 0.4s;
+}
+
+#pdesc{
+  font-size:0.78rem;
+  color:rgba(255,255,255,0.5);
+  margin-top:3px;
+  max-width:280px;
+  transition:opacity 0.4s;
+}
+
+#stats{
+  display:flex;gap:28px;
+  text-align:center;
+}
+
+.stat-val{
+  display:block;
+  font-size:1.6rem;font-weight:300;
+  letter-spacing:0.02em;
+  transition:opacity 0.4s;
+}
+
+.stat-lbl{
+  display:block;
+  font-size:0.55rem;
+  color:rgba(255,255,255,0.45);
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  margin-top:2px;
+}
+
+/* ── SVG доғалы навигация ── */
+#nav-wrap{
+  position:fixed;
+  top:90px;left:0;right:0;
+  height:220px;
+  z-index:10;
+  pointer-events:none;
+}
+
+#nav-svg{
+  width:100%;height:100%;
+  overflow:visible;
+}
+
+.plabel{
+  fill:rgba(255,255,255,0.38);
+  font-family:'Segoe UI',system-ui,sans-serif;
+  font-size:14px;
+  cursor:pointer;
+  pointer-events:all;
+  transition:fill 0.3s;
+}
+
+.plabel:hover{
+  fill:rgba(255,255,255,0.75);
+}
+
+.plabel.active{
+  fill:#ffffff;
+  font-size:18px;
+  font-weight:600;
+}
+
+/* ── Fade анимациясы ── */
+.fade-out{opacity:0;transition:opacity 0.2s;}
+.fade-in{opacity:1;transition:opacity 0.4s 0.2s;}
+
+/* ── Фото панелі ── */
+#photo-panel{
+  display:none;
+  position:fixed;
+  bottom:0;left:50%;
+  transform:translateX(-50%);
+  width:88vw;height:64vh;
+  z-index:4;
+  border-radius:22px 22px 0 0;
+  overflow:hidden;
+  box-shadow:0 0 60px rgba(255,255,255,0.12), 0 0 0 1px rgba(255,255,255,0.08);
+  background:#08060a;
+}
+#photo-panel img{
+  width:100%;height:100%;
+  object-fit:contain;
+  display:block;
+}
+</style>
+</head>
+<body>
+
+<div id="stars"></div>
+<div id="atmo"></div>
+
+<div id="sphere-wrap">
+  <div id="sphere"></div>
+  <div id="ring"></div>
+</div>
+
+<div id="photo-panel"><img id="photo-img" src="" alt=""></div>
+
+
+<div id="info">
+  <div id="left-info">
+    <div id="category-title" style="display:none;font-size:0.58rem;color:rgba(255,255,255,0.35);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:3px"></div>
+    <div id="pname">Жер</div>
+    <div id="pdesc">Ғарышта тіршілік бар жалғыз белгілі ғаламшар</div>
+  </div>
+  <div id="stats">
+    <div>
+      <span class="stat-val" id="sv-tilt">23.4°</span>
+      <span class="stat-lbl">Ос еңкейісі</span>
+    </div>
+    <div>
+      <span class="stat-val" id="sv-grav">1.0x</span>
+      <span class="stat-lbl">Тартылыс</span>
+    </div>
+    <div>
+      <span class="stat-val" id="sv-hours">24</span>
+      <span class="stat-lbl">Сағат</span>
+    </div>
+  </div>
+</div>
+
+<div id="nav-wrap">
+  <svg id="nav-svg" viewBox="0 0 1000 220" preserveAspectRatio="none">
+    <defs>
+      <path id="navPath" d="M-60,215 C120,-25 880,-25 1060,215" fill="none"/>
+    </defs>
+    <text class="plabel" id="lbl0"><textPath href="#navPath" id="tp0" startOffset="6%">Меркурий</textPath></text>
+    <text class="plabel" id="lbl1"><textPath href="#navPath" id="tp1" startOffset="18%">Шолпан</textPath></text>
+    <text class="plabel active" id="lbl2"><textPath href="#navPath" id="tp2" startOffset="31%">Жер</textPath></text>
+    <text class="plabel" id="lbl3"><textPath href="#navPath" id="tp3" startOffset="43%">Марс</textPath></text>
+    <text class="plabel" id="lbl4"><textPath href="#navPath" id="tp4" startOffset="56%">Юпитер</textPath></text>
+    <text class="plabel" id="lbl5"><textPath href="#navPath" id="tp5" startOffset="68%">Сатурн</textPath></text>
+    <text class="plabel" id="lbl6"><textPath href="#navPath" id="tp6" startOffset="80%">Уран</textPath></text>
+    <text class="plabel" id="lbl7"><textPath href="#navPath" id="tp7" startOffset="92%">Нептун</textPath></text>
+  </svg>
+</div>
+
+<script>
+window.GAME_TYPE  = 'planet';
+window.GAME_TITLE = 'Планеталар Навигациясы';
+window.getGameConfig  = () => ({ items: DATA.map(d=>({name:d.kk, desc:d.desc, photo:d.photo||''})) });
+
+const SPHERE_COLORS = [
+  'radial-gradient(circle at 38% 32%, #7ad0f8, #2870b0 35%, #1a5890 58%, #0a3068)',
+  'radial-gradient(circle at 38% 32%, #e87848, #c03818 40%, #901808 64%, #601008)',
+  'radial-gradient(circle at 38% 32%, #d0c8b8, #9a8878 38%, #6a5a50 62%, #3a2e28)',
+  'radial-gradient(circle at 38% 32%, #c0f0f5, #68c8cc 38%, #40a0a8 62%, #208090)',
+  'radial-gradient(circle at 38% 32%, #f5e0a8, #d8b060 38%, #b08030 62%, #7a5418)',
+  'radial-gradient(circle at 38% 32%, #8098f8, #3050d0 38%, #1828b0 62%, #0a1878)',
+  'radial-gradient(circle at 38% 32%, #f0e5b0, #d0c078 38%, #b09848 62%, #887830)',
+  'radial-gradient(circle at 38% 32%, #b8d8a8, #688848 38%, #486028 62%, #283808)',
+];
+const SHADOW_COLORS = [
+  'rgba(90,170,240,0.35)','rgba(200,80,40,0.35)','rgba(130,110,95,0.4)',
+  'rgba(90,200,210,0.35)','rgba(220,170,80,0.35)','rgba(70,110,230,0.4)',
+  'rgba(210,190,110,0.35)','rgba(100,160,80,0.35)'
+];
+
+window.setGameConfig = function(cfg){
+  if(!cfg || !cfg.items || !cfg.items.length) return;
+  const items = cfg.items.slice(0, 8);
+
+  // DATA массивін жаңартамыз
+  DATA.length = 0;
+  items.forEach((item, i)=>{
+    DATA.push({
+      kk: item.name || ('Элемент '+(i+1)),
+      desc: item.desc || '',
+      tilt: '—', grav: '—', hours: '—',
+      sphere: item.photo
+        ? 'radial-gradient(circle at 38% 32%, #aaa 0%, #444 100%)'
+        : SPHERE_COLORS[i % SPHERE_COLORS.length],
+      shadow: SHADOW_COLORS[i % SHADOW_COLORS.length],
+      ring: false,
+      photo: item.photo || null
+    });
+  });
+
+  // SVG жапсырмаларын жаңартамыз
+  const offsets2 = [6,18,31,43,56,68,80,92];
+  tps.forEach((tp, i)=>{
+    tp.setAttribute('startOffset', offsets2[i]+'%');
+    const lbl = lbls[i];
+    if(i < DATA.length){
+      lbl.style.display = '';
+      lbl.querySelector('textPath').textContent = DATA[i].kk;
+    } else {
+      lbl.style.display = 'none';
+    }
+  });
+
+  if(cfg.title){
+    const ct = document.getElementById('category-title');
+    if(ct){ ct.textContent = cfg.title; ct.style.display = 'block'; }
+  }
+
+  // Фото бар бірінші элементті ашамыз, болмаса — 0
+  let startIdx = DATA.findIndex(d => d.photo);
+  if(startIdx < 0) startIdx = 0;
+
+  current = startIdx;
+  applyPlanet(startIdx);
+
+  const initShift2 = CENTER - offsets2[startIdx];
+  for(let i=0;i<8;i++){
+    offsets[i] = offsets2[i] + initShift2;
+    targetOffsets[i] = offsets[i];
+    tps[i].setAttribute('startOffset', offsets[i].toFixed(2)+'%');
+    const dist2 = Math.abs(offsets[i] - CENTER);
+    const op2 = Math.max(0, Math.min(1, 1 - (dist2 - 25) / 20));
+    lbls[i].style.fill = i===startIdx ? `rgba(255,255,255,${op2})` : `rgba(255,255,255,${op2*0.42})`;
+  }
+};
+
+const DATA = [
+  {
+    kk:'Меркурий', tilt:'0.03°', grav:'0.38x', hours:'1408',
+    desc:'Күнге жақын ең кішкентай ғаламшар',
+    sphere:'radial-gradient(circle at 38% 32%, #d0c8b8, #9a8878 38%, #6a5a50 62%, #3a2e28)',
+    shadow:'rgba(130,110,95,0.4)', ring:false
+  },
+  {
+    kk:'Шолпан', tilt:'177.4°', grav:'0.91x', hours:'5832',
+    desc:'Ыстық және жуан атмосферасы бар ғаламшар',
+    sphere:'radial-gradient(circle at 38% 32%, #f5e0a8, #d8b060 38%, #b08030 62%, #7a5418)',
+    shadow:'rgba(220,170,80,0.35)', ring:false
+  },
+  {
+    kk:'Жер', tilt:'23.4°', grav:'1.0x', hours:'24',
+    desc:'Ғарышта тіршілік бар жалғыз белгілі ғаламшар',
+    sphere:'radial-gradient(circle at 38% 32%, #7ad0f8, #2870b0 35%, #1a5890 58%, #0a3068)',
+    shadow:'rgba(90,170,240,0.35)', ring:false
+  },
+  {
+    kk:'Марс', tilt:'25.2°', grav:'0.38x', hours:'24.6',
+    desc:'Ең биік жанартаулары бар қызыл ғаламшар',
+    sphere:'radial-gradient(circle at 38% 32%, #e87848, #c03818 40%, #901808 64%, #601008)',
+    shadow:'rgba(200,80,40,0.35)', ring:false
+  },
+  {
+    kk:'Юпитер', tilt:'3.1°', grav:'2.53x', hours:'9.9',
+    desc:'Күн жүйесінің ең үлкен ғаламшары',
+    sphere:`radial-gradient(ellipse at 38% 32%, rgba(255,245,220,0.55) 0%, transparent 55%),
+            radial-gradient(circle, transparent 25%, rgba(0,0,0,0.45) 100%),
+            repeating-linear-gradient(
+              0deg,
+              #c07838 0%, #d49858 10%, #e8c090 20%, #d09060 30%,
+              #b86830 40%, #c88048 50%, #d8a070 60%, #c07838 70%,
+              #a86020 80%, #b87840 90%, #c07838 100%
+            )`,
+    shadow:'rgba(200,140,70,0.35)', ring:false
+  },
+  {
+    kk:'Сатурн', tilt:'26.7°', grav:'1.07x', hours:'10.7',
+    desc:'Ғажайып сақиналары бар алып ғаламшар',
+    sphere:'radial-gradient(circle at 38% 32%, #f0e5b0, #d0c078 38%, #b09848 62%, #887830)',
+    shadow:'rgba(210,190,110,0.35)', ring:true
+  },
+  {
+    kk:'Уран', tilt:'97.8°', grav:'0.89x', hours:'17.2',
+    desc:'Бүйіріне жатып айналатын мұз алыбы',
+    sphere:'radial-gradient(circle at 38% 32%, #c0f0f5, #68c8cc 38%, #40a0a8 62%, #208090)',
+    shadow:'rgba(90,200,210,0.35)', ring:false
+  },
+  {
+    kk:'Нептун', tilt:'28.3°', grav:'1.14x', hours:'16.1',
+    desc:'Ең қатты желдері бар алыс мұз алыбы',
+    sphere:'radial-gradient(circle at 38% 32%, #8098f8, #3050d0 38%, #1828b0 62%, #0a1878)',
+    shadow:'rgba(70,110,230,0.4)', ring:false
+  }
+];
+
+const BASE_OFFSETS = [6, 18, 31, 43, 56, 68, 80, 92]; // % initial
+const CENTER = 37; // % → center of arc for selected planet
+
+let current = 2; // Earth
+let offsets = [...BASE_OFFSETS];
+let targetOffsets = [...BASE_OFFSETS];
+let animId = null;
+
+const tps        = Array.from({length:8}, (_,i) => document.getElementById('tp'+i));
+const lbls       = Array.from({length:8}, (_,i) => document.getElementById('lbl'+i));
+const sphere     = document.getElementById('sphere');
+const sphereWrap = document.getElementById('sphere-wrap');
+const photoPanel = document.getElementById('photo-panel');
+const photoImg   = document.getElementById('photo-img');
+const ring       = document.getElementById('ring');
+const atmo       = document.getElementById('atmo');
+const pname  = document.getElementById('pname');
+const pdesc  = document.getElementById('pdesc');
+const svTilt = document.getElementById('sv-tilt');
+const svGrav = document.getElementById('sv-grav');
+const svHrs  = document.getElementById('sv-hours');
+
+function applyPlanet(i) {
+  const p = DATA[i];
+  if(p.photo){
+    sphereWrap.style.display = 'none';
+    photoImg.src = p.photo;
+    photoPanel.style.display = 'block';
+    ring.style.display = 'none';
+  } else {
+    photoPanel.style.display = 'none';
+    sphereWrap.style.display = '';
+    sphere.style.background = p.sphere;
+    sphere.style.boxShadow  = `inset -35px -35px 90px rgba(0,0,0,0.65), 0 0 120px ${p.shadow}`;
+    ring.style.display = p.ring ? 'block' : 'none';
+  }
+  atmo.style.background   = `radial-gradient(ellipse at bottom, ${p.shadow} 0%, transparent 70%)`;
+  pname.textContent  = p.kk;
+  pdesc.textContent  = p.desc;
+  svTilt.textContent = p.tilt;
+  svGrav.textContent = p.grav;
+  svHrs.textContent  = p.hours;
+  lbls.forEach((l,j) => l.classList.toggle('active', j===i));
+}
+
+function animateStep() {
+  let done = true;
+  offsets = offsets.map((o,i) => {
+    const d = targetOffsets[i] - o;
+    if (Math.abs(d) > 0.05) { done = false; return o + d * 0.14; }
+    return targetOffsets[i];
+  });
+  offsets.forEach((o,i) => {
+    tps[i].setAttribute('startOffset', o.toFixed(2) + '%');
+    // opacity: fade out near edges
+    const dist = Math.abs(o - CENTER);
+    const op = Math.max(0, Math.min(1, 1 - (dist - 25) / 20));
+    lbls[i].style.fill = i === current
+      ? `rgba(255,255,255,${op})`
+      : `rgba(255,255,255,${op * 0.42})`;
+    lbls[i].style.fontSize = i === current ? '18px' : '14px';
+  });
+  if (!done) animId = requestAnimationFrame(animateStep);
+}
+
+function selectPlanet(i) {
+  if (i === current) return;
+  current = i;
+  const shift = CENTER - BASE_OFFSETS[i];
+  targetOffsets = BASE_OFFSETS.map(b => b + shift);
+  cancelAnimationFrame(animId);
+  animId = requestAnimationFrame(animateStep);
+  applyPlanet(i);
+}
+
+// Click handlers
+lbls.forEach((lbl, i) => {
+  lbl.addEventListener('click', () => selectPlanet(i));
+});
+
+// Init
+applyPlanet(2);
+// Shift so Earth (i=2) is at center
+const initShift = CENTER - BASE_OFFSETS[2];
+offsets = BASE_OFFSETS.map(b => b + initShift);
+targetOffsets = [...offsets];
+offsets.forEach((o,i) => {
+  tps[i].setAttribute('startOffset', o.toFixed(2) + '%');
+  const dist = Math.abs(o - CENTER);
+  const op = Math.max(0, Math.min(1, 1 - (dist - 25) / 20));
+  lbls[i].style.fill = i === current
+    ? `rgba(255,255,255,${op})`
+    : `rgba(255,255,255,${op * 0.42})`;
+});
+
+</script>
+<script src="game-edit.js"></script>
+</body>
+</html>

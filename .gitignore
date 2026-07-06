@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+backend/teachers.db
+remotion-shoes-video/
+remotion-carousel/
+aisha-site-repo/
+.env
+*.env
+node_modules/

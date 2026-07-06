@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Қазақ Ақындары</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{
+  width:100vw;height:100vh;overflow:hidden;
+  background:#060816;
+  font-family:'Segoe UI',system-ui,sans-serif;
+  color:#fff;
+}
+
+/* Stars */
+#stars{position:fixed;inset:0;z-index:0;}
+
+/* Title */
+h1{
+  position:fixed;top:22px;left:50%;
+  transform:translateX(-50%);
+  font-size:clamp(1.2rem,3.5vw,2.2rem);
+  letter-spacing:0.22em;
+  color:#ffd700;
+  text-shadow:0 0 30px rgba(255,200,0,0.6),0 0 80px rgba(255,150,0,0.3);
+  white-space:nowrap;
+  z-index:50;
+  font-weight:800;
+  text-transform:uppercase;
+}
+
+/* Stage */
+#stage{position:fixed;inset:0;z-index:10;}
+
+/* ── Center circle ── */
+#center{
+  position:absolute;
+  left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  width:clamp(220px,32vw,310px);
+  height:clamp(220px,32vw,310px);
+  border-radius:50%;
+  background:radial-gradient(circle,#0e102a 0%,#060816 100%);
+  border:2px solid rgba(255,200,100,0.22);
+  box-shadow:
+    0 0 50px rgba(80,80,200,0.15),
+    inset 0 0 40px rgba(0,0,0,0.6);
+  display:flex;align-items:center;justify-content:center;
+  text-align:center;
+  z-index:25;
+  overflow:hidden;
+  transition:border-color 0.4s,box-shadow 0.4s;
+}
+#center.active{
+  border-color:rgba(255,200,100,0.6);
+  box-shadow:0 0 80px rgba(255,180,50,0.25),inset 0 0 40px rgba(0,0,0,0.5);
+  cursor:pointer;
+}
+#center-glow{
+  position:absolute;inset:0;border-radius:50%;
+  opacity:0;transition:opacity 0.5s;
+  pointer-events:none;
+}
+
+/* Default state — ring */
+#center-default{position:relative;z-index:2;padding:10px;}
+#center-default .hint{
+  font-size:clamp(0.55rem,1.4vw,0.72rem);
+  letter-spacing:0.14em;
+  color:rgba(255,255,255,0.35);
+  text-transform:uppercase;
+  line-height:1.8;
+}
+#center-default .star{font-size:2rem;opacity:0.15;margin:6px 0;}
+
+/* Selected state — poet info */
+#center-info{display:none;position:relative;z-index:2;padding:16px 18px;width:100%;}
+#ci-initials{
+  font-size:clamp(2rem,5vw,3rem);
+  font-weight:900;
+  opacity:0.18;
+  letter-spacing:-2px;
+  line-height:1;
+  margin-bottom:6px;
+}
+#ci-name{
+  font-size:clamp(0.78rem,1.8vw,1rem);
+  font-weight:700;
+  color:#ffd700;
+  letter-spacing:0.05em;
+  line-height:1.3;
+}
+#ci-years{
+  font-size:clamp(0.6rem,1.3vw,0.75rem);
+  color:rgba(255,255,255,0.5);
+  margin:5px 0;
+}
+#ci-line{width:36px;height:1px;background:rgba(255,200,100,0.4);margin:6px auto;}
+#ci-work{
+  font-size:clamp(0.55rem,1.2vw,0.68rem);
+  color:rgba(255,220,160,0.85);
+  line-height:1.55;
+  font-style:italic;
+}
+#ci-close{
+  position:absolute;top:8px;right:12px;
+  font-size:1.1rem;color:rgba(255,255,255,0.5);
+  cursor:pointer;z-index:3;display:none;
+  line-height:1;
+}
+#ci-close:hover{color:#fff;}
+
+/* ── Cards ── */
+.card{
+  position:absolute;
+  width:clamp(90px,9vw,115px);
+  height:clamp(120px,12vw,152px);
+  border-radius:12px;
+  cursor:pointer;
+  overflow:hidden;
+  border:2px solid rgba(255,255,255,0.1);
+  box-shadow:0 4px 20px rgba(0,0,0,0.55);
+  transition:border-color 0.25s,box-shadow 0.25s;
+  transform-origin:center center;
+}
+.card:hover{
+  border-color:rgba(255,200,100,0.5);
+  box-shadow:0 4px 30px rgba(255,200,100,0.3);
+}
+.card.selected{
+  border-color:rgba(255,220,80,0.9)!important;
+  box-shadow:0 0 30px rgba(255,200,80,0.6)!important;
+}
+
+.card-portrait{
+  width:100%;height:68%;
+  position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+}
+.card-initials{
+  font-size:clamp(1.4rem,2.5vw,2rem);
+  font-weight:900;
+  color:rgba(255,255,255,0.22);
+  letter-spacing:-1px;
+  position:relative;z-index:1;
+}
+.card-shimmer{
+  position:absolute;inset:0;
+  background:radial-gradient(circle at 38% 30%,rgba(255,255,255,0.12),transparent 55%);
+}
+
+.card-footer{
+  height:32%;
+  background:rgba(0,0,0,0.45);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:3px 5px;
+}
+.card-name{
+  font-size:clamp(0.47rem,0.9vw,0.58rem);
+  font-weight:700;
+  text-align:center;
+  line-height:1.25;
+  color:#fff;
+}
+.card-years-small{
+  font-size:clamp(0.38rem,0.7vw,0.48rem);
+  color:rgba(255,255,255,0.45);
+  margin-top:2px;
+}
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+<h1>ҚАЗАҚ АҚЫНДАРЫ</h1>
+
+<div id="stage">
+  <div id="center">
+    <div id="center-glow"></div>
+    <div id="center-default">
+      <div class="hint">АҚЫНДЫ<br>ТАҢДА</div>
+      <div class="star">✦</div>
+      <div class="hint" style="font-size:0.5rem;opacity:0.6;">СУРЕТТІ БАСЫҢЫЗ</div>
+    </div>
+    <div id="center-info">
+      <div id="ci-photo" style="display:none;margin-bottom:6px;text-align:center"></div>
+      <div id="ci-initials"></div>
+      <div id="ci-name"></div>
+      <div id="ci-years"></div>
+      <div id="ci-line"></div>
+      <div id="ci-work"></div>
+      <div id="ci-task" style="display:none;margin-top:8px;font-size:clamp(0.5rem,1.1vw,0.62rem);color:rgba(255,220,100,0.9);line-height:1.5;padding:6px 8px;background:rgba(255,200,80,0.08);border-radius:6px;border-left:2px solid rgba(255,200,80,0.4)"></div>
+    </div>
+    <div id="ci-close" onclick="deselect()">✕</div>
+  </div>
+</div>
+
+<script>
+/* ── Stars ── */
+const sc = document.getElementById('stars');
+const ctx = sc.getContext('2d');
+function rsz(){ sc.width=innerWidth; sc.height=innerHeight; }
+rsz(); window.addEventListener('resize',rsz);
+const ST=Array.from({length:300},()=>({
+  x:Math.random()*innerWidth,y:Math.random()*innerHeight,
+  r:Math.random()*1.4+0.1,a:0.1+Math.random()*0.9,
+  t:Math.random()*Math.PI*2,s:0.002+Math.random()*0.007
+}));
+(function sl(){
+  ctx.clearRect(0,0,sc.width,sc.height);
+  ST.forEach(s=>{
+    s.t+=s.s;
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(200,215,255,${(s.a*(0.5+0.5*Math.sin(s.t))).toFixed(3)})`;
+    ctx.fill();
+  });
+  requestAnimationFrame(sl);
+})();
+
+/* ── GAME CONFIG INTERFACE ── */
+window.GAME_TYPE  = 'poets';
+window.GAME_TITLE = 'Қазақ Ақындары';
+window.getGameConfig  = () => ({ title: 'Қазақ Ақындары', poets: POETS.slice() });
+window.setGameConfig  = function(cfg){
+  if(cfg && cfg.poets && cfg.poets.length){
+    POETS.length = 0;
+    cfg.poets.forEach(p => POETS.push(p));
+    rebuildPoetCards();
+  }
+};
+
+const ciPhoto = document.getElementById('ci-photo');
+const ciTask  = document.getElementById('ci-task');
+
+/* ── Poets ── */
+const POETS=[
+  {name:'Абай\nҚунанбаев',  sh:'АҚ', years:'1845–1904',
+   work:'"Сегіз аяқ"\n"Қарасөздер"\nҚазақ поэзиясының атасы',
+   c1:'#0d1b6b',c2:'#2a3fa0'},
+  {name:'Жамбыл\nЖабаев',   sh:'ЖЖ', years:'1846–1945',
+   work:'"Ленинградта өскен бала"\nХалық жырауы',
+   c1:'#1b5e20',c2:'#2e7d32'},
+  {name:'Мұхтар\nӘуезов',   sh:'МӘ', years:'1897–1961',
+   work:'"Абай жолы" роман-эпопеясы\nДраматург, жазушы',
+   c1:'#4a148c',c2:'#6a1b9a'},
+  {name:'Сәкен\nСейфуллин', sh:'СС', years:'1894–1938',
+   work:'"Тар жол, тайғақ кешу"\n"Советстан" поэмасы',
+   c1:'#b71c1c',c2:'#c62828'},
+  {name:'Ілияс\nЖансүгіров', sh:'ІЖ', years:'1894–1938',
+   work:'"Күй" поэмасы\n"Дала" поэмасы',
+   c1:'#00695c',c2:'#00838f'},
+  {name:'Бейімбет\nМайлин',  sh:'БМ', years:'1894–1938',
+   work:'"Шұғаның белгісі"\n"Азамат Азаматыч"',
+   c1:'#33691e',c2:'#558b2f'},
+  {name:'Мағжан\nЖұмабаев',  sh:'МЖ', years:'1893–1938',
+   work:'"Батыр Баян" поэмасы\n"Шолпанның күнәсі"',
+   c1:'#0d47a1',c2:'#1565c0'},
+  {name:'С.М.\nТорайғыров',  sh:'СТ', years:'1893–1920',
+   work:'"Қамар сұлу" романы\n"Адасқан өмір"',
+   c1:'#bf360c',c2:'#e64a19'},
+  {name:'Ахмет\nБайтұрсынов', sh:'АБ', years:'1872–1937',
+   work:'"Маса" жинағы\nҰлт мұғалімі, алфавит реформасы',
+   c1:'#263238',c2:'#455a64'},
+  {name:'Міржақып\nДулатов', sh:'МД', years:'1885–1935',
+   work:'"Оян, қазақ!" жинағы\n"Бақытсыз Жамал" романы',
+   c1:'#880e4f',c2:'#ad1457'},
+];
+
+/* ── Build cards ── */
+const stage=document.getElementById('stage');
+let N=POETS.length;
+let cards=[];
+
+function buildPoetCards(){
+  cards.forEach(c=>c.remove());
+  cards.length = 0;
+  N = POETS.length;
+  deselect();
+  POETS.forEach((p)=>{
+    const card=document.createElement('div');
+    card.className='card';
+    const portraitContent = p.photo
+      ? `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">`
+      : `<div class="card-shimmer"></div><div class="card-initials">${p.sh||''}</div>`;
+    card.innerHTML=`
+      <div class="card-portrait" style="background:linear-gradient(145deg,${p.c1||'#0d1b6b'},${p.c2||'#2a3fa0'})">
+        ${portraitContent}
+      </div>
+      <div class="card-footer">
+        <div class="card-name">${(p.name||'').replace(/\n/g,'<br>')}</div>
+        <div class="card-years-small">${p.years||''}</div>
+      </div>`;
+    card.addEventListener('click',()=>selectPoet(p, card));
+    stage.appendChild(card);
+    cards.push(card);
+  });
+}
+function rebuildPoetCards(){ buildPoetCards(); }
+
+/* ── Center display ── */
+const centerEl  =document.getElementById('center');
+const centerDef =document.getElementById('center-default');
+const centerInfo=document.getElementById('center-info');
+const ciInitials=document.getElementById('ci-initials');
+const ciName    =document.getElementById('ci-name');
+const ciYears   =document.getElementById('ci-years');
+const ciWork    =document.getElementById('ci-work');
+const ciGlow    =document.getElementById('center-glow');
+const ciClose   =document.getElementById('ci-close');
+let selectedIdx=-1;
+
+function selectPoet(p, card){
+  selectedIdx = cards.indexOf(card);
+  ciInitials.textContent=p.sh||'';
+  ciName.innerHTML=(p.name||'').replace(/\n/g,'<br>');
+  ciYears.textContent=p.years||'';
+  ciWork.innerHTML=(p.work||'').replace(/\n/g,'<br>');
+
+  if(p.photo){
+    ciPhoto.style.display='block';
+    ciPhoto.innerHTML=`<img src="${p.photo}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,200,80,0.4)">`;
+    ciInitials.style.display='none';
+  } else {
+    ciPhoto.style.display='none';
+    ciInitials.style.display='block';
+  }
+
+  if(p.task){
+    ciTask.style.display='block';
+    ciTask.textContent = '📝 ' + p.task;
+  } else {
+    ciTask.style.display='none';
+  }
+
+  ciGlow.style.background=`radial-gradient(circle,${p.c1||'#1b5e20'}cc,${p.c2||'#2e7d32'}88,transparent 70%)`;
+  ciGlow.style.opacity='1';
+  centerDef.style.display='none';
+  centerInfo.style.display='block';
+  centerEl.classList.add('active');
+  ciClose.style.display='block';
+
+  // Fade out selected card and remove it
+  card.style.transition='opacity 0.7s, transform 0.7s';
+  card.style.opacity='0';
+  card.style.transform+=' scale(0)';
+  setTimeout(()=>{
+    card.remove();
+    const ci = cards.indexOf(card);
+    if(ci >= 0){ cards.splice(ci, 1); }
+    const pi = POETS.indexOf(p);
+    if(pi >= 0){ POETS.splice(pi, 1); }
+    N = cards.length;
+  }, 700);
+}
+
+function deselect(){
+  selectedIdx=-1;
+  ciGlow.style.opacity='0';
+  centerDef.style.display='block';
+  centerInfo.style.display='none';
+  centerEl.classList.remove('active');
+  ciClose.style.display='none';
+  cards.forEach(c=>c.classList.remove('selected'));
+}
+
+centerEl.addEventListener('click',e=>{
+  if(ciClose.contains(e.target)) return;
+  if(selectedIdx>=0) deselect();
+});
+
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') deselect(); });
+
+buildPoetCards();
+
+/* ── Orbit loop ── */
+let angle=0;
+const SPEED=0.20; // degrees/frame
+
+function getR(){ return Math.min(innerWidth,innerHeight)*0.36; }
+function getCW(){ return Math.min(innerWidth,innerHeight)*0.075; }
+function getCH(){ return getCW()*1.33; }
+
+function loop(){
+  angle+=SPEED;
+  const R=getR();
+  const CW=getCW(), CH=getCH();
+  const ox=innerWidth/2, oy=innerHeight/2;
+
+  const curN = cards.length || 1;
+  cards.forEach((card,i)=>{
+    const a=(angle+i*(360/curN))*Math.PI/180;
+    const x=ox+Math.cos(a)*R-CW/2;
+    const y=oy+Math.sin(a)*R-CH/2;
+    const sinA=Math.sin(a);
+    const sc2=0.70+0.38*((sinA+1)/2);   // depth scale: 0.70 top → 1.08 bottom
+    const op=0.55+0.45*((sinA+1)/2);    // opacity: faded at top, full at bottom
+    const zi=Math.round((sinA+1)*10+1); // z-index
+
+    card.style.width  = CW+'px';
+    card.style.height = CH+'px';
+    card.style.left   = x+'px';
+    card.style.top    = y+'px';
+    card.style.transform=`scale(${sc2.toFixed(3)})`;
+    card.style.opacity=op.toFixed(3);
+    card.style.zIndex=zi;
+  });
+
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+<script src="game-edit.js"></script>
+</body>
+</html>
