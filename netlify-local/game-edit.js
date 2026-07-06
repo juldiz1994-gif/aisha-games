@@ -125,6 +125,13 @@
       font-size:0.7rem;color:rgba(100,255,100,0.7);letter-spacing:0.12em;
       text-transform:uppercase;margin-bottom:8px;
     }
+    #ge-link-box .uses-badge{
+      display:inline-flex;align-items:center;gap:5px;
+      background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);
+      color:#fbbf24;border-radius:20px;padding:4px 12px;
+      font-size:0.72rem;font-weight:700;letter-spacing:0.04em;
+      margin-bottom:10px;
+    }
     #ge-link-text{font-size:0.75rem;color:#4ade80;word-break:break-all;margin-bottom:10px;line-height:1.5;}
     #ge-copy-btn{
       background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.4);
@@ -166,6 +173,7 @@
       <button id="ge-save-btn" onclick="__geSave()">✅ Аяқтау → Сілтеме алу</button>
       <div id="ge-link-box">
         <div class="lbl">✅ Сілтемеңіз дайын!</div>
+        <div class="uses-badge">🎯 3 рет тегін пайдалануға болады</div>
         <div id="ge-link-text"></div>
         <button id="ge-copy-btn" onclick="__geCopy()">📋 Көшіру</button>
       </div>

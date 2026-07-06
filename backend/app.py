@@ -54,6 +54,8 @@ def init_db():
             game_type TEXT NOT NULL,
             config_json TEXT NOT NULL,
             title TEXT,
+            use_count INTEGER DEFAULT 0,
+            max_uses INTEGER DEFAULT 3,
             created_at BIGINT DEFAULT ({NOW_TS})
         )'''))
         c.execute(text(f'''CREATE TABLE IF NOT EXISTS payments (
@@ -73,6 +75,8 @@ def init_db():
             "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS display_name TEXT",
             "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS subscription_end BIGINT DEFAULT 0",
             "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS free_games_used INTEGER DEFAULT 0",
+            "ALTER TABLE game_configs ADD COLUMN IF NOT EXISTS use_count INTEGER DEFAULT 0",
+            "ALTER TABLE game_configs ADD COLUMN IF NOT EXISTS max_uses INTEGER DEFAULT 3",
         ]
     else:
         migs = [
@@ -80,6 +84,8 @@ def init_db():
             "ALTER TABLE teachers ADD COLUMN display_name TEXT",
             "ALTER TABLE teachers ADD COLUMN subscription_end INTEGER DEFAULT 0",
             "ALTER TABLE teachers ADD COLUMN free_games_used INTEGER DEFAULT 0",
+            "ALTER TABLE game_configs ADD COLUMN use_count INTEGER DEFAULT 0",
+            "ALTER TABLE game_configs ADD COLUMN max_uses INTEGER DEFAULT 3",
         ]
     for sql in migs:
         try:
@@ -267,12 +273,12 @@ def api_save_game():
 
     with engine.begin() as c:
         c.execute(
-            text('INSERT INTO game_configs (id, teacher_id, game_type, config_json, title) VALUES (:id,:tid,:gt,:cfg,:title)'),
+            text('INSERT INTO game_configs (id, teacher_id, game_type, config_json, title, use_count, max_uses) VALUES (:id,:tid,:gt,:cfg,:title,0,3)'),
             {'id': game_id, 'tid': None, 'gt': game_type,
              'cfg': json.dumps(config, ensure_ascii=False), 'title': title}
         )
 
-    return jsonify({'success': True, 'id': game_id})
+    return jsonify({'success': True, 'id': game_id, 'max_uses': 3})
 
 @app.route('/api/my-games')
 def api_my_games():
@@ -300,10 +306,37 @@ def api_get_game(game_id):
 @app.route('/play/<game_id>')
 def play_game(game_id):
     with engine.connect() as c:
-        row = c.execute(text('SELECT game_type FROM game_configs WHERE id=:id'), {'id': game_id}).fetchone()
+        row = c.execute(text('SELECT game_type, use_count, max_uses FROM game_configs WHERE id=:id'), {'id': game_id}).fetchone()
     if not row:
-        return '<h2 style="font-family:sans-serif;padding:40px">Сілтеме табылмады</h2>', 404
-    return redirect(f'/{row_dict(row)["game_type"]}.html?play={game_id}')
+        return '<h2 style="font-family:sans-serif;padding:40px;color:#333">Сілтеме табылмады</h2>', 404
+    d = row_dict(row)
+    use_count = d.get('use_count') or 0
+    max_uses  = d.get('max_uses') or 3
+    if use_count >= max_uses:
+        return f'''<!doctype html><html lang="kk"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Сілтеме бітті</title>
+<style>
+  body{{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+       background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);font-family:\'Segoe UI\',sans-serif;}}
+  .box{{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:20px;
+        padding:40px 36px;text-align:center;max-width:380px;width:90%;}}
+  .icon{{font-size:3.5rem;margin-bottom:16px;}}
+  h1{{color:#fff;font-size:1.4rem;font-weight:700;margin:0 0 10px;}}
+  p{{color:rgba(255,255,255,0.55);font-size:0.9rem;line-height:1.6;margin:0;}}
+  .badge{{display:inline-block;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.35);
+          color:#f87171;border-radius:30px;padding:5px 16px;font-size:0.78rem;font-weight:700;
+          letter-spacing:0.06em;margin-top:18px;}}
+</style></head><body>
+<div class="box">
+  <div class="icon">🔒</div>
+  <h1>Сілтеме мерзімі бітті</h1>
+  <p>Бұл сілтеме {max_uses} рет пайдаланылды.<br>Жаңа сілтеме алу үшін мұғалімге хабарласыңыз.</p>
+  <div class="badge">{use_count} / {max_uses} пайдаланылды</div>
+</div></body></html>''', 403
+    with engine.begin() as c:
+        c.execute(text('UPDATE game_configs SET use_count = use_count + 1 WHERE id=:id'), {'id': game_id})
+    return redirect(f'/{d["game_type"]}.html?play={game_id}')
 
 # ── Payments ──────────────────────────────────────────────
 @app.route('/api/payment/submit', methods=['POST'])
