@@ -191,17 +191,11 @@
   paywall.id = 'ge-paywall';
   paywall.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:99999;align-items:center;justify-content:center;';
   paywall.innerHTML = `
-    <div style="background:#0a0c1e;border:1px solid rgba(255,200,100,0.2);border-radius:20px;padding:36px 28px;text-align:center;max-width:350px;width:90%;font-family:'Segoe UI',sans-serif;">
-      <div style="font-size:3rem;margin-bottom:12px;">🔒</div>
-      <h2 style="color:#fff;font-size:1.2rem;font-weight:800;margin:0 0 8px;letter-spacing:0.02em;">Тегін нұсқа бітті</h2>
-      <p style="color:rgba(255,255,255,0.5);font-size:0.85rem;line-height:1.65;margin:0 0 20px;">Сіз <b style="color:#fbbf24;">3 тегін</b> сілтемені пайдаландыңыз.<br>Жалғастыру үшін 1 айлық<br>жазылым рәсімдеңіз.</p>
-      <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:14px;padding:16px;margin-bottom:16px;">
-        <div style="color:#fbbf24;font-size:1.5rem;font-weight:800;margin-bottom:6px;">4 990 ₸ / ай</div>
-        <div style="color:rgba(255,255,255,0.75);font-size:0.88rem;font-weight:600;">💳 Kaspi Gold:</div>
-        <div style="color:#fff;font-size:1.05rem;font-weight:800;letter-spacing:0.05em;margin-top:2px;">${KASPI_NUM}</div>
-      </div>
-      <p style="color:rgba(255,255,255,0.3);font-size:0.7rem;margin:0 0 16px;line-height:1.5;">Төлем жасап, скриншотты жіберіңіз</p>
-      <button onclick="document.getElementById('ge-paywall').style.display='none'" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.45);border-radius:8px;padding:8px 22px;cursor:pointer;font-size:0.8rem;font-family:inherit;">✕ Жабу</button>
+    <div style="background:#0a0c1e;border:1px solid rgba(255,200,100,0.18);border-radius:20px;padding:40px 30px;text-align:center;max-width:320px;width:90%;font-family:'Segoe UI',sans-serif;">
+      <div style="font-size:3.2rem;margin-bottom:14px;">🔒</div>
+      <h2 style="color:#fff;font-size:1.25rem;font-weight:800;margin:0 0 12px;">Тегін нұсқа бітті</h2>
+      <p style="color:rgba(255,255,255,0.5);font-size:0.88rem;line-height:1.7;margin:0 0 20px;">Сіз 3 тегін сілтемені пайдаландыңыз.<br>Жалғастыру үшін бізге хабарласыңыз.</p>
+      <button onclick="document.getElementById('ge-paywall').style.display='none'" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);border-radius:8px;padding:9px 24px;cursor:pointer;font-size:0.82rem;font-family:inherit;">Жабу</button>
     </div>`;
   document.body.appendChild(paywall);
 
@@ -924,6 +918,11 @@
     // Тегін лимит тексеру
     const savesUsed = parseInt(localStorage.getItem('aisha_free_saves') || '0');
     if(savesUsed >= FREE_LIMIT){
+      // Telegram-ға тек бір рет хабарлама жібер
+      if(!localStorage.getItem('aisha_limit_notified')){
+        localStorage.setItem('aisha_limit_notified','1');
+        fetch(`${API}/api/limit-hit`,{method:'POST'}).catch(()=>{});
+      }
       document.getElementById('ge-paywall').style.display = 'flex';
       return;
     }

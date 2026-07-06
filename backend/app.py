@@ -280,6 +280,29 @@ def api_save_game():
 
     return jsonify({'success': True, 'id': game_id, 'max_uses': 3})
 
+@app.route('/api/limit-hit', methods=['POST'])
+def api_limit_hit():
+    cfg       = load_config()
+    bot_token = os.environ.get('BOT_TOKEN') or cfg.get('bot_token', '')
+    admin_id  = os.environ.get('ADMIN_TG_ID') or str(cfg.get('admin_tg_id', ''))
+    if bot_token and admin_id:
+        try:
+            http_req.post(
+                f'https://api.telegram.org/bot{bot_token}/sendMessage',
+                json={
+                    'chat_id': admin_id,
+                    'text': (
+                        '🔔 Жаңа сатып алушы!\n\n'
+                        '👤 Мұғалім 3 тегін сілтемені пайдаланды.\n'
+                        '💳 Байланысып, төлем туралы хабарлаңыз.'
+                    )
+                },
+                timeout=5
+            )
+        except Exception as e:
+            print(f'limit-hit notify error: {e}')
+    return jsonify({'ok': True})
+
 @app.route('/api/my-games')
 def api_my_games():
     token   = request.headers.get('X-Token', '')
