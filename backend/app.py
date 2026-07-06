@@ -43,6 +43,7 @@ def init_db():
             password_hash TEXT NOT NULL,
             token TEXT UNIQUE,
             telegram_id TEXT,
+            display_name TEXT,
             subscription_end BIGINT DEFAULT 0,
             free_games_used INTEGER DEFAULT 0,
             created_at BIGINT DEFAULT ({NOW_TS})
@@ -69,12 +70,14 @@ def init_db():
     if USE_PG:
         migs = [
             "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS telegram_id TEXT",
+            "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS display_name TEXT",
             "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS subscription_end BIGINT DEFAULT 0",
             "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS free_games_used INTEGER DEFAULT 0",
         ]
     else:
         migs = [
             "ALTER TABLE teachers ADD COLUMN telegram_id TEXT",
+            "ALTER TABLE teachers ADD COLUMN display_name TEXT",
             "ALTER TABLE teachers ADD COLUMN subscription_end INTEGER DEFAULT 0",
             "ALTER TABLE teachers ADD COLUMN free_games_used INTEGER DEFAULT 0",
         ]
@@ -174,6 +177,51 @@ def api_login():
             c.execute(text('UPDATE teachers SET token=:token WHERE id=:id'), update)
     return jsonify({'success': True, 'token': token, 'email': email})
 
+@app.route('/api/tg-login', methods=['POST'])
+def api_tg_login():
+    data       = request.get_json() or {}
+    tg_id      = str(data.get('telegram_id', '')).strip()
+    first_name = data.get('first_name', '').strip()
+    if not tg_id:
+        return jsonify({'error': 'telegram_id керек'}), 400
+
+    with engine.connect() as c:
+        row = c.execute(
+            text('SELECT * FROM teachers WHERE telegram_id=:tg'),
+            {'tg': tg_id}
+        ).fetchone()
+
+    new_token = secrets.token_hex(24)
+
+    if row:
+        teacher = row_dict(row)
+        dn = first_name or teacher.get('display_name') or ''
+        with engine.begin() as c:
+            c.execute(
+                text('UPDATE teachers SET token=:t, display_name=:dn WHERE telegram_id=:tg'),
+                {'t': new_token, 'dn': dn, 'tg': tg_id}
+            )
+        return jsonify({
+            'success':      True,
+            'token':        new_token,
+            'email':        teacher['email'],
+            'display_name': dn,
+            'free_games_used': teacher.get('free_games_used', 0) or 0,
+        })
+    else:
+        email    = f'tg_{tg_id}@telegram.kz'
+        rand_pw  = secrets.token_hex(8)
+        try:
+            with engine.begin() as c:
+                c.execute(
+                    text('INSERT INTO teachers (email, password_hash, token, telegram_id, display_name) VALUES (:e,:p,:t,:tg,:dn)'),
+                    {'e': email, 'p': hash_pw(rand_pw), 't': new_token, 'tg': tg_id, 'dn': first_name}
+                )
+            return jsonify({'success': True, 'token': new_token, 'email': email,
+                            'display_name': first_name, 'free_games_used': 0})
+        except Exception as ex:
+            return jsonify({'error': str(ex)}), 500
+
 @app.route('/api/logout', methods=['POST'])
 def api_logout():
     token = request.headers.get('X-Token', '')
@@ -189,12 +237,14 @@ def api_me():
     if not teacher:
         return jsonify({'error': 'Авторизация жоқ'}), 401
     now = int(time.time())
+    display = teacher.get('display_name') or teacher['email']
     return jsonify({
-        'email':           teacher['email'],
-        'is_admin':        teacher['email'] == get_admin_email(),
+        'email':            teacher['email'],
+        'display_name':     display,
+        'is_admin':         teacher['email'] == get_admin_email(),
         'subscription_end': teacher.get('subscription_end', 0) or 0,
-        'free_games_used': teacher.get('free_games_used', 0) or 0,
-        'has_sub':         (teacher.get('subscription_end', 0) or 0) > now,
+        'free_games_used':  teacher.get('free_games_used', 0) or 0,
+        'has_sub':          (teacher.get('subscription_end', 0) or 0) > now,
     })
 
 # ── Games ─────────────────────────────────────────────────

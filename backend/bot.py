@@ -27,29 +27,64 @@ except ImportError:
     print('pip install pyTelegramBotAPI requests')
     sys.exit(1)
 
-bot    = telebot.TeleBot(TOKEN, parse_mode=None)
-states = {}  # {chat_id: {'step': 'email'|'password', 'email': ''}}
+bot = telebot.TeleBot(TOKEN, parse_mode=None)
 
-# ── /start ──────────────────────────────────────────────
+
+# ── /start — Telegram арқылы автоматты кіру ─────────────────
 @bot.message_handler(commands=['start', 'help'])
 def cmd_start(msg):
-    cid = msg.chat.id
-    states[cid] = {'step': 'email'}
+    cid        = msg.chat.id
+    first_name = (msg.from_user.first_name or '').strip()
+
+    try:
+        r = requests.post(
+            f'{API_URL}/api/tg-login',
+            json={'telegram_id': str(cid), 'first_name': first_name},
+            timeout=10
+        )
+        d = r.json()
+    except Exception:
+        bot.send_message(cid, 'Сервермен байланыс жоқ. Кейінірек қайталаңыз.')
+        return
+
+    if not d.get('success'):
+        bot.send_message(cid, f'Қате: {d.get("error", "белгісіз")}')
+        return
+
+    token      = d.get('token')
+    free_used  = int(d.get('free_games_used', 0) or 0)
+    free_left  = max(0, 3 - free_used)
+    link       = f'{HUB_URL}/?t={token}'
+
+    if free_left > 0:
+        free_text = f'🎁 Тегін ойындар: {free_left}/3 қалды'
+    else:
+        free_text = '⚡ Тегін ойындар таусылды. Жазылым: 4990 тг/ай'
+
+    greeting = f'Сәлем, {first_name}!' if first_name else 'Сәлем!'
+
     bot.send_message(cid,
-        'Сәлем! Мұғалімдер платформасына қош келдіңіз! 🎓\n\n'
-        'Тіркелу үшін атыңызды жазыңыз (кез келген ат):'
+        f'{greeting} 🎓\n\n'
+        f'▶ Платформаға кіру сілтемесі:\n'
+        f'{link}\n\n'
+        f'{free_text}\n\n'
+        f'⚠️ Бұл сілтеме жеке — басқаға бермеңіз!\n'
+        f'Жаңа сілтеме алу үшін /start деп жазыңыз.'
     )
 
-# ── /myid ─────────────────────────────────────────────────
+
+# ── /myid — Telegram ID алу (admin үшін) ─────────────────────
 @bot.message_handler(commands=['myid'])
 def cmd_myid(msg):
     bot.send_message(msg.chat.id,
         f'Сіздің Telegram ID-іңіз:\n\n'
         f'{msg.chat.id}\n\n'
-        f'Бұл санды config.json → admin_tg_id өрісіне жазыңыз.'
+        f'Railway → Variables ішіне қосыңыз:\n'
+        f'ADMIN_TG_ID = {msg.chat.id}'
     )
 
-# ── /stats — тек администратор ──────────────────────────
+
+# ── /stats — тек администратор ───────────────────────────────
 @bot.message_handler(commands=['stats', 'users'])
 def cmd_stats(msg):
     cfg2     = load_config()
@@ -58,7 +93,7 @@ def cmd_stats(msg):
         bot.send_message(msg.chat.id, 'Admin ID орнатылмаған. /myid арқылы алыңыз.')
         return
     if msg.chat.id != admin_id:
-        bot.send_message(msg.chat.id, '❌ Бұл команда тек администраторға арналған.')
+        bot.send_message(msg.chat.id, 'Бұл команда тек администраторға арналған.')
         return
     try:
         r = requests.get(
@@ -72,69 +107,24 @@ def cmd_stats(msg):
         return
     total = d.get('total', 0)
     users = d.get('users', [])
-    text = f'👥 Тіркелген мұғалімдер: {total}\n\n📋 Тізім:\n'
+    text = f'Тіркелген мұғалімдер: {total}\n\nТізім:\n'
     for i, u in enumerate(users[:30], 1):
-        text += f'{i}. {u["email"]}\n'
+        name = u.get('display_name') or u.get('email', '')
+        text += f'{i}. {name}\n'
     bot.send_message(msg.chat.id, text)
 
-# ── Тіркелу / кіру ──────────────────────────────────────
+
+# ── Белгісіз хабар ───────────────────────────────────────────
 @bot.message_handler(func=lambda m: True)
-def handle(msg):
-    cid  = msg.chat.id
-    text = msg.text.strip() if msg.text else ''
+def handle_unknown(msg):
+    bot.send_message(msg.chat.id,
+        'Платформаға кіру үшін /start деп жазыңыз.'
+    )
 
-    if cid not in states:
-        bot.send_message(cid, '/start деп жазыңыз')
-        return
-
-    st = states[cid]
-
-    if st['step'] == 'email':
-        if len(text) < 2:
-            bot.send_message(cid, 'Атыңыз кем дегенде 2 символ болу керек')
-            return
-        st['email'] = text.lower()
-        st['step']  = 'password'
-        bot.send_message(cid, f'Атыңыз: {text}\n\nПароль жазыңыз (4 символдан кем емес):')
-
-    elif st['step'] == 'password':
-        if len(text) < 4:
-            bot.send_message(cid, 'Пароль кем дегенде 4 символ болу керек')
-            return
-        email, pw = st['email'], text
-        del states[cid]
-
-        payload = {'email': email, 'password': pw, 'telegram_id': str(cid)}
-        try:
-            r = requests.post(f'{API_URL}/api/register', json=payload, timeout=5)
-            d = r.json()
-        except Exception:
-            bot.send_message(cid, 'Сервермен байланыс жоқ. Кейінірек қайталаңыз.')
-            return
-
-        if d.get('success'):
-            bot.send_message(cid,
-                f'✅ Тіркелдіңіз!\n\n'
-                f'👤 Атыңыз: {email}\n'
-                f'🔑 Пароль: {pw}\n\n'
-                f'🌐 Платформаға кіру:\n{HUB_URL}\n\n'
-                f'⚠️ Атыңыз бен паролді сақтаңыз!\n\n'
-                f'🎁 3 ойын тегін. Одан кейін 4990 тг/ай.'
-            )
-        elif 'тіркелген' in d.get('error', ''):
-            r2 = requests.post(f'{API_URL}/api/login', json=payload, timeout=5)
-            d2 = r2.json()
-            if d2.get('success'):
-                bot.send_message(cid,
-                    f'✅ Кірдіңіз!\n\n'
-                    f'🌐 Платформаға кіру:\n{HUB_URL}'
-                )
-            else:
-                bot.send_message(cid, f'Бұл ат тіркелген, бірақ пароль қате.\n\n/start деп қайталаңыз.')
-        else:
-            bot.send_message(cid, f'Қате: {d.get("error","Белгісіз")}')
 
 me = bot.get_me()
 print(f'  Bot started: @{me.username}')
-print(f'  Admin TG ID: {cfg.get("admin_tg_id", "not set — send /myid to bot")}')
+print(f'  Hub URL: {HUB_URL}')
+print(f'  API URL: {API_URL}')
+print(f'  Admin TG ID: {cfg.get("admin_tg_id", "not set")}')
 bot.infinity_polling(timeout=30, long_polling_timeout=20)

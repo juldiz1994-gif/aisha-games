@@ -174,6 +174,37 @@ html,body{
   margin-bottom:28px;letter-spacing:0.1em;
   text-transform:uppercase;
 }
+/* Telegram CTA */
+.tg-cta{
+  display:block;width:100%;
+  background:linear-gradient(135deg,#0088cc,#229ED9);
+  border:none;color:#fff;
+  padding:16px;border-radius:12px;
+  font-weight:800;font-size:1rem;
+  cursor:pointer;letter-spacing:0.03em;
+  text-decoration:none;text-align:center;
+  transition:opacity 0.2s;
+  margin-bottom:8px;
+}
+.tg-cta:hover{opacity:0.88;}
+.tg-hint{
+  text-align:center;
+  font-size:0.74rem;
+  color:rgba(255,255,255,0.35);
+  line-height:1.6;
+  margin-bottom:24px;
+}
+/* Admin toggle */
+#admin-toggle{
+  text-align:center;
+  font-size:0.74rem;
+  color:rgba(255,255,255,0.25);
+  cursor:pointer;
+  text-decoration:underline;
+  margin-bottom:0;
+}
+#admin-toggle:hover{color:rgba(255,255,255,0.5);}
+#admin-form{display:none;margin-top:20px;border-top:1px solid rgba(255,255,255,0.07);padding-top:20px;}
 .inp{
   width:100%;
   background:rgba(255,255,255,0.05);
@@ -201,17 +232,6 @@ html,body{
   text-align:center;margin-top:10px;
   min-height:18px;
 }
-#login-tg{
-  text-align:center;
-  margin-top:20px;
-  padding-top:18px;
-  border-top:1px solid rgba(255,255,255,0.07);
-  font-size:0.75rem;
-  color:rgba(255,255,255,0.35);
-  line-height:1.7;
-}
-#login-tg span{color:#38bdf8;}
-#login-tg a{color:#38bdf8;text-decoration:none;}
 
 /* ── Admin panel ── */
 #admin-panel{
@@ -351,15 +371,19 @@ html,body{
 <!-- Login overlay -->
 <div id="login-overlay">
   <div id="login-box">
-    <h2>КІРУ</h2>
+    <h2>✦ КІРУ</h2>
     <div class="sub">Мұғалімдер платформасы</div>
-    <input class="inp" id="em" type="text" placeholder="Атыңыз (кез келген ат)" autocomplete="username">
-    <input class="inp" id="pw" type="password" placeholder="Пароль" autocomplete="current-password">
-    <button id="login-btn" onclick="doLogin()">Кіру</button>
-    <div id="login-err"></div>
-    <div id="login-tg">
-      Тіркелу үшін Telegram ботын қолданыңыз:<br>
-      <a href="https://t.me/studentgameBot" target="_blank">@studentgameBot</a>
+    <a class="tg-cta" href="https://t.me/studentgameBot" target="_blank">✈ Telegram арқылы кіру</a>
+    <div class="tg-hint">
+      Ботты ашыңыз → /start деп жазыңыз → сілтемені басыңыз<br>
+      Тіркелу де осы арқылы — пароль қажет емес!
+    </div>
+    <div id="admin-toggle" onclick="toggleAdminForm()">Администратор кіруі</div>
+    <div id="admin-form">
+      <input class="inp" id="em" type="email" placeholder="Email (abdibekovajuldiz1994@gmail.com)" autocomplete="username">
+      <input class="inp" id="pw" type="password" placeholder="Пароль" autocomplete="current-password">
+      <button id="login-btn" onclick="doLogin()">Кіру</button>
+      <div id="login-err"></div>
     </div>
   </div>
 </div>
@@ -485,17 +509,34 @@ function openGame(file){
 }
 
 /* ── Auth ── */
+
+// Magic link: ?t=TOKEN auto-login
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  const t = params.get('t');
+  if(t){
+    localStorage.setItem('teacher_token', t);
+    // Clean URL without reload
+    history.replaceState({}, '', window.location.pathname);
+  }
+})();
+
 const token = localStorage.getItem('teacher_token');
-const email = localStorage.getItem('teacher_email');
+
+function toggleAdminForm(){
+  const f = document.getElementById('admin-form');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
 
 async function checkAuth(){
-  if(!token || !email) return;
-  document.getElementById('login-overlay').style.display='none';
-  document.getElementById('user-email').textContent = email;
+  if(!token) return;
   try{
     const r = await fetch(`${API}/api/me`,{headers:{'X-Token':token}});
+    if(r.status === 401){ localStorage.removeItem('teacher_token'); return; }
     const d = await r.json();
     if(!d.email) return;
+    document.getElementById('login-overlay').style.display='none';
+    document.getElementById('user-email').textContent = d.display_name || d.email;
     if(d.has_sub){
       const badge = document.getElementById('sub-badge');
       badge.style.display = 'block';
@@ -583,24 +624,21 @@ async function rejectPayment(id){
 }
 
 async function doLogin(){
-  const em = document.getElementById('em').value.trim();
-  const pw = document.getElementById('pw').value.trim();
+  const em  = document.getElementById('em').value.trim();
+  const pw  = document.getElementById('pw').value.trim();
   const err = document.getElementById('login-err');
   err.textContent = '';
-  if(!em||!pw){err.textContent='Атыңыз және пароль жазыңыз';return;}
+  if(!em||!pw){err.textContent='Email және пароль жазыңыз';return;}
   try{
     const r = await fetch(`${API}/api/login`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({email:em,password:pw})
+      body:JSON.stringify({email:em, password:pw})
     });
     const d = await r.json();
     if(d.success){
-      localStorage.setItem('teacher_token',d.token);
-      localStorage.setItem('teacher_email',d.email);
-      document.getElementById('login-overlay').style.display='none';
-      document.getElementById('user-email').textContent=d.email;
-      if(d.email === ADMIN_EMAIL) loadAdminStats();
+      localStorage.setItem('teacher_token', d.token);
+      location.reload();
     } else {
       err.textContent = d.error || 'Қате';
     }
@@ -613,7 +651,6 @@ function doLogout(){
   const t = localStorage.getItem('teacher_token');
   if(t) fetch(`${API}/api/logout`,{method:'POST',headers:{'X-Token':t}}).catch(()=>{});
   localStorage.removeItem('teacher_token');
-  localStorage.removeItem('teacher_email');
   location.reload();
 }
 
