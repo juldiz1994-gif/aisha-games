@@ -386,7 +386,7 @@ function showLogoNextBtn(){
   const btn = document.createElement('button');
   btn.id = 'logo-next-btn';
   btn.textContent = '▶ Келесі';
-  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:50;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:10px 24px;border-radius:50px;font-size:0.88rem;font-weight:700;cursor:pointer;letter-spacing:0.06em;';
+  btn.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;background:#22c55e;border:none;color:#fff;padding:12px 28px;border-radius:50px;font-size:0.88rem;font-weight:700;cursor:pointer;letter-spacing:0.04em;box-shadow:0 4px 16px rgba(34,197,94,0.4);';
   btn.onclick = ()=>{
     logoStudentIdx = (logoStudentIdx+1) % LOGO_STUDENTS.length;
     setLogoText(LOGO_STUDENTS[logoStudentIdx]);
