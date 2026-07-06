@@ -3,3 +3,5 @@ flask-cors
 gunicorn
 pyTelegramBotAPI
 requests
+sqlalchemy
+psycopg2-binary

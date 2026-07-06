@@ -1,11 +1,13 @@
+import os, json, hashlib, secrets, time, base64, io
 from flask import Flask, request, jsonify, send_from_directory, redirect
 from flask_cors import CORS
-import sqlite3, hashlib, secrets, os, json
+from sqlalchemy import create_engine, text
+import requests as http_req
 
 BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATIC_DIR = os.path.join(BASE_DIR, 'netlify-local')
-DB_PATH    = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'teachers.db')
 CFG_PATH   = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+DB_PATH    = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'teachers.db')
 
 def load_config():
     if not os.path.exists(CFG_PATH):
@@ -16,167 +18,376 @@ def load_config():
 app = Flask(__name__)
 CORS(app)
 
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+# ── Database ───────────────────────────────────────────────
+_db_url = os.environ.get('DATABASE_URL', f'sqlite:///{DB_PATH}')
+if _db_url.startswith('postgres://'):
+    _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
+USE_PG = _db_url.startswith('postgresql')
+engine = create_engine(_db_url, pool_pre_ping=True)
+
+if USE_PG:
+    SERIAL  = 'SERIAL PRIMARY KEY'
+    NOW_TS  = 'extract(epoch from now())::bigint'
+else:
+    SERIAL  = 'INTEGER PRIMARY KEY AUTOINCREMENT'
+    NOW_TS  = "cast(strftime('%s','now') as integer)"
+
+def row_dict(row):
+    return dict(row._mapping) if row else None
 
 def init_db():
-    db = get_db()
-    db.execute('''CREATE TABLE IF NOT EXISTS teachers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        token TEXT UNIQUE,
-        created_at INTEGER DEFAULT (strftime('%s','now'))
-    )''')
-    db.execute('''CREATE TABLE IF NOT EXISTS game_configs (
-        id TEXT PRIMARY KEY,
-        teacher_id INTEGER,
-        game_type TEXT NOT NULL,
-        config_json TEXT NOT NULL,
-        title TEXT,
-        created_at INTEGER DEFAULT (strftime('%s','now')),
-        FOREIGN KEY(teacher_id) REFERENCES teachers(id)
-    )''')
-    db.commit()
-    db.close()
+    with engine.begin() as c:
+        c.execute(text(f'''CREATE TABLE IF NOT EXISTS teachers (
+            id {SERIAL},
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            token TEXT UNIQUE,
+            telegram_id TEXT,
+            subscription_end BIGINT DEFAULT 0,
+            free_games_used INTEGER DEFAULT 0,
+            created_at BIGINT DEFAULT ({NOW_TS})
+        )'''))
+        c.execute(text(f'''CREATE TABLE IF NOT EXISTS game_configs (
+            id TEXT PRIMARY KEY,
+            teacher_id INTEGER,
+            game_type TEXT NOT NULL,
+            config_json TEXT NOT NULL,
+            title TEXT,
+            created_at BIGINT DEFAULT ({NOW_TS})
+        )'''))
+        c.execute(text(f'''CREATE TABLE IF NOT EXISTS payments (
+            id {SERIAL},
+            teacher_id INTEGER,
+            teacher_email TEXT,
+            screenshot TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            amount INTEGER DEFAULT 4990,
+            created_at BIGINT DEFAULT ({NOW_TS})
+        )'''))
+
+    # Migrations — add new columns if missing
+    if USE_PG:
+        migs = [
+            "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS telegram_id TEXT",
+            "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS subscription_end BIGINT DEFAULT 0",
+            "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS free_games_used INTEGER DEFAULT 0",
+        ]
+    else:
+        migs = [
+            "ALTER TABLE teachers ADD COLUMN telegram_id TEXT",
+            "ALTER TABLE teachers ADD COLUMN subscription_end INTEGER DEFAULT 0",
+            "ALTER TABLE teachers ADD COLUMN free_games_used INTEGER DEFAULT 0",
+        ]
+    for sql in migs:
+        try:
+            with engine.begin() as c:
+                c.execute(text(sql))
+        except Exception:
+            pass
 
 init_db()
 
+# ── Helpers ───────────────────────────────────────────────
 def hash_pw(pw):
     return hashlib.sha256(pw.strip().encode('utf-8')).hexdigest()
 
-def get_teacher(token):
+def get_teacher_by_token(token):
     if not token:
         return None
-    db = get_db()
-    row = db.execute('SELECT * FROM teachers WHERE token=?', (token,)).fetchone()
-    db.close()
-    return dict(row) if row else None
+    with engine.connect() as c:
+        row = c.execute(text('SELECT * FROM teachers WHERE token=:t'), {'t': token}).fetchone()
+    return row_dict(row)
 
+def get_admin_email():
+    cfg = load_config()
+    return os.environ.get('ADMIN_EMAIL') or cfg.get('admin_email', '')
+
+def notify_admin(teacher_email, screenshot_b64):
+    cfg = load_config()
+    bot_token = os.environ.get('BOT_TOKEN') or cfg.get('bot_token', '')
+    admin_id  = os.environ.get('ADMIN_TG_ID') or str(cfg.get('admin_tg_id', ''))
+    if not bot_token or not admin_id:
+        return
+    try:
+        data_part = screenshot_b64.split(',', 1)[-1] if ',' in screenshot_b64 else screenshot_b64
+        img_bytes = base64.b64decode(data_part)
+        http_req.post(
+            f'https://api.telegram.org/bot{bot_token}/sendPhoto',
+            data={
+                'chat_id': admin_id,
+                'caption': (
+                    f'💳 Жаңа төлем!\n'
+                    f'👤 Мұғалім: {teacher_email}\n'
+                    f'💰 Сома: 4990 тг\n\n'
+                    f'Платформаға кіріп растаңыз.'
+                )
+            },
+            files={'photo': ('payment.jpg', io.BytesIO(img_bytes), 'image/jpeg')},
+            timeout=10
+        )
+    except Exception as e:
+        print(f'Telegram notify error: {e}')
+
+# ── Auth ──────────────────────────────────────────────────
 @app.route('/api/register', methods=['POST'])
 def api_register():
-    data = request.get_json() or {}
-    email = data.get('email','').strip().lower()
-    password = data.get('password','').strip()
+    data        = request.get_json() or {}
+    email       = data.get('email', '').strip().lower()
+    password    = data.get('password', '').strip()
+    telegram_id = str(data.get('telegram_id', '')).strip() or None
     if not email or not password:
         return jsonify({'error': 'Email және пароль керек'}), 400
     if len(password) < 4:
         return jsonify({'error': 'Пароль кем дегенде 4 символ'}), 400
     token = secrets.token_hex(24)
     try:
-        db = get_db()
-        db.execute('INSERT INTO teachers (email, password_hash, token) VALUES (?,?,?)',
-                   (email, hash_pw(password), token))
-        db.commit()
-        db.close()
+        with engine.begin() as c:
+            c.execute(
+                text('INSERT INTO teachers (email, password_hash, token, telegram_id) VALUES (:e,:p,:t,:tg)'),
+                {'e': email, 'p': hash_pw(password), 't': token, 'tg': telegram_id}
+            )
         return jsonify({'success': True, 'token': token, 'email': email})
-    except sqlite3.IntegrityError:
-        return jsonify({'error': 'Бұл email бұрын тіркелген'}), 409
+    except Exception:
+        return jsonify({'error': 'Бұл ат бұрын тіркелген'}), 409
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
-    data = request.get_json() or {}
-    email = data.get('email','').strip().lower()
-    password = data.get('password','').strip()
-    db = get_db()
-    row = db.execute('SELECT * FROM teachers WHERE email=? AND password_hash=?',
-                     (email, hash_pw(password))).fetchone()
+    data        = request.get_json() or {}
+    email       = data.get('email', '').strip().lower()
+    password    = data.get('password', '').strip()
+    telegram_id = str(data.get('telegram_id', '')).strip() or None
+    with engine.connect() as c:
+        row = c.execute(
+            text('SELECT * FROM teachers WHERE email=:e AND password_hash=:p'),
+            {'e': email, 'p': hash_pw(password)}
+        ).fetchone()
     if not row:
-        db.close()
-        return jsonify({'error': 'Email немесе пароль қате'}), 401
+        return jsonify({'error': 'Ат немесе пароль қате'}), 401
     token = secrets.token_hex(24)
-    db.execute('UPDATE teachers SET token=? WHERE id=?', (token, row['id']))
-    db.commit()
-    db.close()
+    update = {'token': token, 'id': row_dict(row)['id']}
+    if telegram_id and not row_dict(row).get('telegram_id'):
+        update['tg'] = telegram_id
+        with engine.begin() as c:
+            c.execute(text('UPDATE teachers SET token=:token, telegram_id=:tg WHERE id=:id'), update)
+    else:
+        with engine.begin() as c:
+            c.execute(text('UPDATE teachers SET token=:token WHERE id=:id'), update)
     return jsonify({'success': True, 'token': token, 'email': email})
 
 @app.route('/api/logout', methods=['POST'])
 def api_logout():
-    token = request.headers.get('X-Token','')
+    token = request.headers.get('X-Token', '')
     if token:
-        db = get_db()
-        db.execute('UPDATE teachers SET token=NULL WHERE token=?', (token,))
-        db.commit()
-        db.close()
+        with engine.begin() as c:
+            c.execute(text('UPDATE teachers SET token=NULL WHERE token=:t'), {'t': token})
     return jsonify({'success': True})
 
 @app.route('/api/me')
 def api_me():
-    token = request.headers.get('X-Token','')
-    teacher = get_teacher(token)
+    token   = request.headers.get('X-Token', '')
+    teacher = get_teacher_by_token(token)
     if not teacher:
         return jsonify({'error': 'Авторизация жоқ'}), 401
-    return jsonify({'email': teacher['email']})
+    now = int(time.time())
+    return jsonify({
+        'email':           teacher['email'],
+        'is_admin':        teacher['email'] == get_admin_email(),
+        'subscription_end': teacher.get('subscription_end', 0) or 0,
+        'free_games_used': teacher.get('free_games_used', 0) or 0,
+        'has_sub':         (teacher.get('subscription_end', 0) or 0) > now,
+    })
 
+# ── Games ─────────────────────────────────────────────────
 @app.route('/api/save-game', methods=['POST'])
 def api_save_game():
-    token = request.headers.get('X-Token','')
-    teacher = get_teacher(token)
+    token   = request.headers.get('X-Token', '')
+    teacher = get_teacher_by_token(token)
     if not teacher:
         return jsonify({'error': 'Авторизация қажет'}), 401
-    data = request.get_json() or {}
-    game_type = data.get('type','unknown')
+
+    now = int(time.time())
+    sub_end = teacher.get('subscription_end', 0) or 0
+    has_sub = sub_end > now
+
+    if not has_sub:
+        # Check free tier limit per telegram_id
+        tg_id = teacher.get('telegram_id')
+        if tg_id:
+            with engine.connect() as c:
+                row = c.execute(
+                    text('SELECT COALESCE(SUM(free_games_used),0) AS total FROM teachers WHERE telegram_id=:tg'),
+                    {'tg': tg_id}
+                ).fetchone()
+            total_free = row_dict(row)['total'] if row else 0
+        else:
+            total_free = teacher.get('free_games_used', 0) or 0
+
+        if total_free >= 3:
+            return jsonify({'error': 'subscription_required', 'free_used': 3}), 402
+
+    data      = request.get_json() or {}
+    game_type = data.get('type', 'unknown')
     config    = data.get('config', {})
     title     = data.get('title', 'Сабақ')
     game_id   = secrets.token_urlsafe(8)
-    db = get_db()
-    db.execute('INSERT INTO game_configs (id, teacher_id, game_type, config_json, title) VALUES (?,?,?,?,?)',
-               (game_id, teacher['id'], game_type, json.dumps(config, ensure_ascii=False), title))
-    db.commit()
-    db.close()
+
+    with engine.begin() as c:
+        c.execute(
+            text('INSERT INTO game_configs (id, teacher_id, game_type, config_json, title) VALUES (:id,:tid,:gt,:cfg,:title)'),
+            {'id': game_id, 'tid': teacher['id'], 'gt': game_type,
+             'cfg': json.dumps(config, ensure_ascii=False), 'title': title}
+        )
+        if not has_sub:
+            c.execute(
+                text('UPDATE teachers SET free_games_used = COALESCE(free_games_used,0) + 1 WHERE id=:id'),
+                {'id': teacher['id']}
+            )
+
     return jsonify({'success': True, 'id': game_id})
 
 @app.route('/api/my-games')
 def api_my_games():
-    token = request.headers.get('X-Token','')
-    teacher = get_teacher(token)
+    token   = request.headers.get('X-Token', '')
+    teacher = get_teacher_by_token(token)
     if not teacher:
         return jsonify({'error': 'Авторизация қажет'}), 401
-    db = get_db()
-    rows = db.execute('SELECT id, game_type, title, created_at FROM game_configs WHERE teacher_id=? ORDER BY created_at DESC',
-                      (teacher['id'],)).fetchall()
-    db.close()
-    return jsonify([dict(r) for r in rows])
-
-@app.route('/api/admin/stats')
-def admin_stats():
-    token = request.headers.get('X-Token','')
-    teacher = get_teacher(token)
-    if not teacher:
-        return jsonify({'error': 'Auth required'}), 401
-    cfg = load_config()
-    if teacher['email'] != cfg.get('admin_email',''):
-        return jsonify({'error': 'Admin only'}), 403
-    db = get_db()
-    total = db.execute('SELECT COUNT(*) as cnt FROM teachers').fetchone()['cnt']
-    rows  = db.execute(
-        'SELECT email, created_at FROM teachers ORDER BY created_at DESC'
-    ).fetchall()
-    db.close()
-    return jsonify({'total': total, 'users': [dict(r) for r in rows]})
+    with engine.connect() as c:
+        rows = c.execute(
+            text('SELECT id, game_type, title, created_at FROM game_configs WHERE teacher_id=:tid ORDER BY created_at DESC'),
+            {'tid': teacher['id']}
+        ).fetchall()
+    return jsonify([dict(r._mapping) for r in rows])
 
 @app.route('/api/game/<game_id>')
 def api_get_game(game_id):
-    db = get_db()
-    row = db.execute('SELECT * FROM game_configs WHERE id=?', (game_id,)).fetchone()
-    db.close()
+    with engine.connect() as c:
+        row = c.execute(text('SELECT * FROM game_configs WHERE id=:id'), {'id': game_id}).fetchone()
     if not row:
         return jsonify({'error': 'Табылмады'}), 404
-    result = dict(row)
-    result['config'] = json.loads(result.pop('config_json'))
-    return jsonify(result)
+    d = dict(row._mapping)
+    d['config'] = json.loads(d.pop('config_json'))
+    return jsonify(d)
 
 @app.route('/play/<game_id>')
 def play_game(game_id):
-    db = get_db()
-    row = db.execute('SELECT game_type FROM game_configs WHERE id=?', (game_id,)).fetchone()
-    db.close()
+    with engine.connect() as c:
+        row = c.execute(text('SELECT game_type FROM game_configs WHERE id=:id'), {'id': game_id}).fetchone()
     if not row:
         return '<h2 style="font-family:sans-serif;padding:40px">Сілтеме табылмады</h2>', 404
-    return redirect(f'/{row["game_type"]}.html?play={game_id}')
+    return redirect(f'/{row_dict(row)["game_type"]}.html?play={game_id}')
 
+# ── Payments ──────────────────────────────────────────────
+@app.route('/api/payment/submit', methods=['POST'])
+def payment_submit():
+    token   = request.headers.get('X-Token', '')
+    teacher = get_teacher_by_token(token)
+    if not teacher:
+        return jsonify({'error': 'Авторизация қажет'}), 401
+    data       = request.get_json() or {}
+    screenshot = data.get('screenshot', '')
+    if not screenshot:
+        return jsonify({'error': 'Чек суреті жоқ'}), 400
+    with engine.begin() as c:
+        c.execute(
+            text('INSERT INTO payments (teacher_id, teacher_email, screenshot) VALUES (:tid,:email,:sc)'),
+            {'tid': teacher['id'], 'email': teacher['email'], 'sc': screenshot}
+        )
+    notify_admin(teacher['email'], screenshot)
+    return jsonify({'success': True, 'message': 'Чегіңіз жіберілді! Растауды күтіңіз.'})
+
+@app.route('/api/admin/payments')
+def admin_payments():
+    token   = request.headers.get('X-Token', '')
+    teacher = get_teacher_by_token(token)
+    if not teacher or teacher['email'] != get_admin_email():
+        return jsonify({'error': 'Тек администраторға рұқсат'}), 403
+    with engine.connect() as c:
+        rows = c.execute(
+            text("SELECT id, teacher_email, screenshot, status, amount, created_at FROM payments WHERE status='pending' ORDER BY created_at DESC")
+        ).fetchall()
+    result = []
+    for r in rows:
+        d = dict(r._mapping)
+        result.append({
+            'id':            d['id'],
+            'teacher_email': d['teacher_email'],
+            'screenshot':    d['screenshot'],
+            'amount':        d['amount'],
+            'created_at':    d['created_at'],
+        })
+    return jsonify(result)
+
+@app.route('/api/admin/payments/<int:pay_id>/approve', methods=['POST'])
+def admin_approve(pay_id):
+    token   = request.headers.get('X-Token', '')
+    teacher = get_teacher_by_token(token)
+    if not teacher or teacher['email'] != get_admin_email():
+        return jsonify({'error': 'Тек администраторға рұқсат'}), 403
+    with engine.connect() as c:
+        row = c.execute(text('SELECT * FROM payments WHERE id=:id'), {'id': pay_id}).fetchone()
+    if not row:
+        return jsonify({'error': 'Табылмады'}), 404
+    pay = row_dict(row)
+    sub_end = int(time.time()) + 30 * 24 * 3600  # 30 күн
+    with engine.begin() as c:
+        c.execute(text("UPDATE payments SET status='approved' WHERE id=:id"), {'id': pay_id})
+        c.execute(
+            text('UPDATE teachers SET subscription_end=:sub WHERE id=:tid'),
+            {'sub': sub_end, 'tid': pay['teacher_id']}
+        )
+    # Notify teacher via Telegram (optional)
+    _notify_teacher(pay['teacher_id'], '✅ Төлемңіз расталды! 30 күнге шексіз пайдалануыңызға болады.')
+    return jsonify({'success': True})
+
+@app.route('/api/admin/payments/<int:pay_id>/reject', methods=['POST'])
+def admin_reject(pay_id):
+    token   = request.headers.get('X-Token', '')
+    teacher = get_teacher_by_token(token)
+    if not teacher or teacher['email'] != get_admin_email():
+        return jsonify({'error': 'Тек администраторға рұқсат'}), 403
+    with engine.begin() as c:
+        row_result = c.execute(text('SELECT * FROM payments WHERE id=:id'), {'id': pay_id}).fetchone()
+        if not row_result:
+            return jsonify({'error': 'Табылмады'}), 404
+        pay = row_dict(row_result)
+        c.execute(text("UPDATE payments SET status='rejected' WHERE id=:id"), {'id': pay_id})
+    _notify_teacher(pay['teacher_id'], '❌ Төлеміңіз расталмады. Дұрыс чек жіберіп қайталаңыз.')
+    return jsonify({'success': True})
+
+def _notify_teacher(teacher_id, text_msg):
+    cfg = load_config()
+    bot_token = os.environ.get('BOT_TOKEN') or cfg.get('bot_token', '')
+    if not bot_token:
+        return
+    with engine.connect() as c:
+        row = c.execute(text('SELECT telegram_id FROM teachers WHERE id=:id'), {'id': teacher_id}).fetchone()
+    if not row:
+        return
+    tg_id = row_dict(row).get('telegram_id')
+    if not tg_id:
+        return
+    try:
+        http_req.post(
+            f'https://api.telegram.org/bot{bot_token}/sendMessage',
+            json={'chat_id': tg_id, 'text': text_msg},
+            timeout=5
+        )
+    except Exception:
+        pass
+
+# ── Admin stats ───────────────────────────────────────────
+@app.route('/api/admin/stats')
+def admin_stats():
+    token   = request.headers.get('X-Token', '')
+    teacher = get_teacher_by_token(token)
+    if not teacher or teacher['email'] != get_admin_email():
+        return jsonify({'error': 'Admin only'}), 403
+    with engine.connect() as c:
+        total = c.execute(text('SELECT COUNT(*) AS cnt FROM teachers')).fetchone()[0]
+        rows  = c.execute(text('SELECT email, created_at FROM teachers ORDER BY created_at DESC')).fetchall()
+    return jsonify({'total': total, 'users': [dict(r._mapping) for r in rows]})
+
+# ── Static files ──────────────────────────────────────────
 @app.route('/')
 def root():
     return redirect('/hub.html')
@@ -188,17 +399,9 @@ def static_files(filename):
 if __name__ == '__main__':
     import socket
     port = int(os.environ.get('PORT', 5000))
-    hostname = socket.gethostname()
     try:
-        local_ip = socket.gethostbyname(hostname)
+        local_ip = socket.gethostbyname(socket.gethostname())
     except Exception:
         local_ip = '127.0.0.1'
-    print()
-    print('=' * 52)
-    print('  Platform started!')
-    print()
-    print(f'  Local:   http://localhost:{port}')
-    print(f'  Network: http://{local_ip}:{port}')
-    print('=' * 52)
-    print()
+    print(f'\n{"="*52}\n  Platform started!\n  Local:   http://localhost:{port}\n  Network: http://{local_ip}:{port}\n{"="*52}\n')
     app.run(host='0.0.0.0', port=port, debug=False)

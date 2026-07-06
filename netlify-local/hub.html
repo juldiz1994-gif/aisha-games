@@ -248,6 +248,65 @@ html,body{
   padding:4px 10px;
   font-size:0.72rem;color:rgba(255,255,255,0.6);
 }
+/* ── Payments panel ── */
+#payments-panel{
+  background:rgba(100,200,100,0.05);
+  border:1px solid rgba(100,200,100,0.2);
+  border-radius:16px;
+  padding:20px 24px;
+  margin-bottom:28px;
+  display:none;
+}
+#payments-panel .pp-title{
+  font-size:0.68rem;letter-spacing:0.2em;
+  color:rgba(100,220,100,0.7);text-transform:uppercase;
+  margin-bottom:16px;
+}
+#payments-panel .pp-empty{
+  font-size:0.82rem;color:rgba(255,255,255,0.3);
+  text-align:center;padding:16px 0;
+}
+.pay-card{
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:12px;
+  padding:14px;
+  margin-bottom:12px;
+}
+.pay-card .pay-email{
+  font-size:0.78rem;color:rgba(255,200,100,0.8);
+  margin-bottom:10px;font-weight:700;
+}
+.pay-card img{
+  width:100%;max-height:240px;object-fit:contain;
+  border-radius:8px;margin-bottom:12px;
+  background:rgba(255,255,255,0.06);
+}
+.pay-btns{display:flex;gap:10px;}
+.pay-approve{
+  flex:1;background:linear-gradient(135deg,#16a34a,#22c55e);
+  border:none;color:#fff;padding:11px;border-radius:9px;
+  font-weight:800;font-size:0.88rem;cursor:pointer;
+  transition:opacity 0.2s;
+}
+.pay-approve:hover{opacity:0.88;}
+.pay-reject{
+  flex:1;background:rgba(239,68,68,0.15);
+  border:1px solid rgba(239,68,68,0.35);
+  color:#f87171;padding:11px;border-radius:9px;
+  font-weight:700;font-size:0.88rem;cursor:pointer;
+  transition:background 0.2s;
+}
+.pay-reject:hover{background:rgba(239,68,68,0.25);}
+/* ── Sub badge ── */
+#sub-badge{
+  display:none;
+  background:rgba(34,197,94,0.12);
+  border:1px solid rgba(34,197,94,0.35);
+  border-radius:8px;padding:7px 16px;
+  font-size:0.75rem;color:#4ade80;
+  letter-spacing:0.05em;
+}
 </style>
 </head>
 <body>
@@ -257,12 +316,17 @@ html,body{
 <div id="topbar">
   <div id="topbar-title">✦ Мұғалімдер Платформасы</div>
   <div id="topbar-right">
+    <div id="sub-badge">✅ Жазылым белсенді</div>
     <div id="user-email"></div>
     <button id="logout-btn" onclick="doLogout()">Шығу</button>
   </div>
 </div>
 
 <div id="main">
+  <div id="payments-panel">
+    <div class="pp-title">💳 Кіріс төлемдер — растауды күтуде</div>
+    <div id="payments-list"><div class="pp-empty">Жүктелуде...</div></div>
+  </div>
   <div id="admin-panel">
     <div class="ap-title">👑 Администратор панелі</div>
     <span class="ap-count" id="ap-count">—</span>
@@ -301,7 +365,7 @@ html,body{
 </div>
 
 <script>
-const API = 'http://localhost:5000';
+const API = '';
 
 const GAMES = [
   {
@@ -421,16 +485,28 @@ function openGame(file){
 }
 
 /* ── Auth ── */
-const ADMIN_EMAIL = 'test@test.com';
 const token = localStorage.getItem('teacher_token');
 const email = localStorage.getItem('teacher_email');
 
-function checkAuth(){
-  if(token && email){
-    document.getElementById('login-overlay').style.display='none';
-    document.getElementById('user-email').textContent = email;
-    if(email === ADMIN_EMAIL) loadAdminStats();
-  }
+async function checkAuth(){
+  if(!token || !email) return;
+  document.getElementById('login-overlay').style.display='none';
+  document.getElementById('user-email').textContent = email;
+  try{
+    const r = await fetch(`${API}/api/me`,{headers:{'X-Token':token}});
+    const d = await r.json();
+    if(!d.email) return;
+    if(d.has_sub){
+      const badge = document.getElementById('sub-badge');
+      badge.style.display = 'block';
+      const days = Math.ceil(((d.subscription_end||0) - Date.now()/1000) / 86400);
+      badge.textContent = `✅ Жазылым ${days} күн`;
+    }
+    if(d.is_admin){
+      loadAdminStats();
+      loadPayments();
+    }
+  } catch(e){}
 }
 checkAuth();
 
@@ -450,6 +526,60 @@ async function loadAdminStats(){
     });
     document.getElementById('admin-panel').style.display = 'block';
   } catch(e){}
+}
+
+async function loadPayments(){
+  document.getElementById('payments-panel').style.display = 'block';
+  try{
+    const r = await fetch(`${API}/api/admin/payments`,{headers:{'X-Token':token}});
+    const payments = await r.json();
+    const list = document.getElementById('payments-list');
+    if(!Array.isArray(payments) || payments.length === 0){
+      list.innerHTML = '<div class="pp-empty">Күтудегі төлем жоқ</div>';
+      return;
+    }
+    list.innerHTML = payments.map(p=>`
+      <div class="pay-card" id="pc-${p.id}">
+        <div class="pay-email">👤 ${p.teacher_email} · ${p.amount} тг</div>
+        <img src="${p.screenshot}" alt="Чек">
+        <div class="pay-btns">
+          <button class="pay-approve" onclick="approvePayment(${p.id})">✅ Растау</button>
+          <button class="pay-reject"  onclick="rejectPayment(${p.id})">❌ Болдырмау</button>
+        </div>
+      </div>`).join('');
+  } catch(e){
+    document.getElementById('payments-list').innerHTML = '<div class="pp-empty">Жүктеу қатесі</div>';
+  }
+}
+
+async function approvePayment(id){
+  const card = document.getElementById('pc-'+id);
+  if(card) card.style.opacity='0.5';
+  try{
+    const r = await fetch(`${API}/api/admin/payments/${id}/approve`,{
+      method:'POST', headers:{'X-Token':token}
+    });
+    const d = await r.json();
+    if(d.success && card) card.remove();
+    if(!document.querySelectorAll('.pay-card').length){
+      document.getElementById('payments-list').innerHTML = '<div class="pp-empty">Күтудегі төлем жоқ</div>';
+    }
+  } catch(e){ if(card) card.style.opacity='1'; }
+}
+
+async function rejectPayment(id){
+  const card = document.getElementById('pc-'+id);
+  if(card) card.style.opacity='0.5';
+  try{
+    const r = await fetch(`${API}/api/admin/payments/${id}/reject`,{
+      method:'POST', headers:{'X-Token':token}
+    });
+    const d = await r.json();
+    if(d.success && card) card.remove();
+    if(!document.querySelectorAll('.pay-card').length){
+      document.getElementById('payments-list').innerHTML = '<div class="pp-empty">Күтудегі төлем жоқ</div>';
+    }
+  } catch(e){ if(card) card.style.opacity='1'; }
 }
 
 async function doLogin(){

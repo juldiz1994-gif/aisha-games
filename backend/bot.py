@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-import json, os, sys, sqlite3
+import json, os, sys
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
-DB_PATH     = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'teachers.db')
 
 def load_config():
     if not os.path.exists(CONFIG_PATH):
@@ -41,7 +40,7 @@ def cmd_start(msg):
         'Тіркелу үшін атыңызды жазыңыз (кез келген ат):'
     )
 
-# ── /myid — кез келген адам өз ID-ін алады ─────────────
+# ── /myid ─────────────────────────────────────────────────
 @bot.message_handler(commands=['myid'])
 def cmd_myid(msg):
     bot.send_message(msg.chat.id,
@@ -53,36 +52,29 @@ def cmd_myid(msg):
 # ── /stats — тек администратор ──────────────────────────
 @bot.message_handler(commands=['stats', 'users'])
 def cmd_stats(msg):
-    cfg2 = load_config()
+    cfg2     = load_config()
     admin_id = cfg2.get('admin_tg_id', 0)
-
     if not admin_id:
-        bot.send_message(msg.chat.id,
-            'Admin ID орнатылмаған.\n'
-            '/myid арқылы ID-іңізді алып, config.json → admin_tg_id өрісіне жазыңыз.'
-        )
+        bot.send_message(msg.chat.id, 'Admin ID орнатылмаған. /myid арқылы алыңыз.')
         return
-
     if msg.chat.id != admin_id:
         bot.send_message(msg.chat.id, '❌ Бұл команда тек администраторға арналған.')
         return
-
     try:
-        conn = sqlite3.connect(DB_PATH)
-        total = conn.execute('SELECT COUNT(*) FROM teachers').fetchone()[0]
-        rows  = conn.execute(
-            'SELECT email, created_at FROM teachers ORDER BY created_at DESC'
-        ).fetchall()
-        conn.close()
+        r = requests.get(
+            f'{API_URL}/api/admin/stats',
+            headers={'X-Token': cfg2.get('admin_token', '')},
+            timeout=5
+        )
+        d = r.json()
     except Exception as e:
-        bot.send_message(msg.chat.id, f'Деректер базасы қатесі: {e}')
+        bot.send_message(msg.chat.id, f'Сервер қатесі: {e}')
         return
-
-    text = f'👥 Тіркелген мұғалімдер: {total}\n\n'
-    text += '📋 Тізім:\n'
-    for i, (email, ts) in enumerate(rows, 1):
-        text += f'{i}. {email}\n'
-
+    total = d.get('total', 0)
+    users = d.get('users', [])
+    text = f'👥 Тіркелген мұғалімдер: {total}\n\n📋 Тізім:\n'
+    for i, u in enumerate(users[:30], 1):
+        text += f'{i}. {u["email"]}\n'
     bot.send_message(msg.chat.id, text)
 
 # ── Тіркелу / кіру ──────────────────────────────────────
@@ -112,9 +104,9 @@ def handle(msg):
         email, pw = st['email'], text
         del states[cid]
 
+        payload = {'email': email, 'password': pw, 'telegram_id': str(cid)}
         try:
-            r = requests.post(f'{API_URL}/api/register',
-                              json={'email': email, 'password': pw}, timeout=5)
+            r = requests.post(f'{API_URL}/api/register', json=payload, timeout=5)
             d = r.json()
         except Exception:
             bot.send_message(cid, 'Сервермен байланыс жоқ. Кейінірек қайталаңыз.')
@@ -126,11 +118,11 @@ def handle(msg):
                 f'👤 Атыңыз: {email}\n'
                 f'🔑 Пароль: {pw}\n\n'
                 f'🌐 Платформаға кіру:\n{HUB_URL}\n\n'
-                f'⚠️ Атыңыз бен паролді сақтаңыз!'
+                f'⚠️ Атыңыз бен паролді сақтаңыз!\n\n'
+                f'🎁 3 ойын тегін. Одан кейін 4990 тг/ай.'
             )
-        elif 'бұрын тіркелген' in d.get('error', ''):
-            r2 = requests.post(f'{API_URL}/api/login',
-                               json={'email': email, 'password': pw}, timeout=5)
+        elif 'тіркелген' in d.get('error', ''):
+            r2 = requests.post(f'{API_URL}/api/login', json=payload, timeout=5)
             d2 = r2.json()
             if d2.get('success'):
                 bot.send_message(cid,
@@ -138,14 +130,11 @@ def handle(msg):
                     f'🌐 Платформаға кіру:\n{HUB_URL}'
                 )
             else:
-                bot.send_message(cid,
-                    f'Бұл ат тіркелген, бірақ пароль қате.\n\n/start деп қайталаңыз.'
-                )
+                bot.send_message(cid, f'Бұл ат тіркелген, бірақ пароль қате.\n\n/start деп қайталаңыз.')
         else:
             bot.send_message(cid, f'Қате: {d.get("error","Белгісіз")}')
 
 me = bot.get_me()
 print(f'  Bot started: @{me.username}')
-print(f'  Stats command: /stats')
 print(f'  Admin TG ID: {cfg.get("admin_tg_id", "not set — send /myid to bot")}')
 bot.infinity_polling(timeout=30, long_polling_timeout=20)
