@@ -914,7 +914,7 @@
         status.textContent = d.error||'Қате болды';
       }
     } catch(e){
-      status.textContent = 'Сервермен байланыс жоқ (localhost:5000)';
+      status.textContent = 'Қате: ' + (e.message||e);
     }
     btn.disabled = false;
     btn.textContent = '✅ Аяқтау → Сілтеме алу';

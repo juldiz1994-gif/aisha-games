@@ -268,7 +268,7 @@ def api_save_game():
     with engine.begin() as c:
         c.execute(
             text('INSERT INTO game_configs (id, teacher_id, game_type, config_json, title) VALUES (:id,:tid,:gt,:cfg,:title)'),
-            {'id': game_id, 'tid': 'guest', 'gt': game_type,
+            {'id': game_id, 'tid': None, 'gt': game_type,
              'cfg': json.dumps(config, ensure_ascii=False), 'title': title}
         )
 
