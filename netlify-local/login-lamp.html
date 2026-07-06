@@ -248,23 +248,6 @@
       font-size: 0.9rem;
     }
 
-    .ll-signin {
-      width: 100%;
-      padding: 0.62rem;
-      border: none;
-      border-radius: 8px;
-      background: linear-gradient(135deg, #A07C08 0%, #D4AF37 45%, #B89020 100%);
-      color: #1A1200;
-      font-size: 0.88rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      cursor: pointer;
-      margin-top: 0.1rem;
-      box-shadow: 0 4px 18px rgba(200, 165, 50, 0.3);
-      opacity: 0.4;
-      transition: opacity 0.4s ease;
-    }
-    .ll-signin.ready { opacity: 1; }
 
     /* ── Сөз жұптары (форма ішінде) ── */
     .ll-pairs-divider {
@@ -319,7 +302,6 @@
         </div>
         <hr class="ll-pairs-divider">
         <div id="llPairsList"></div>
-        <button class="ll-signin" id="llSignin">Sign In</button>
       </div>
     </div>
     <span id="llPairsTitle" style="display:none"></span>
@@ -333,7 +315,6 @@
     const usernameEl = document.getElementById('llUsername');
     const cursorEl   = document.getElementById('llCursor');
     const passwordEl = document.getElementById('llPassword');
-    const signinBtn  = document.getElementById('llSignin');
     const userField  = document.getElementById('llUserField');
 
     let isOn = false;
@@ -380,7 +361,6 @@
         } else {
           userField.classList.remove('typing');
           cursorEl.style.display = 'none';
-          signinBtn.classList.add('ready');
         }
       })();
     }
