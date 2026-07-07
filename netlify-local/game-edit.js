@@ -234,6 +234,8 @@
     localStorage.removeItem('aisha_free_saves');
     localStorage.removeItem('aisha_limit_notified');
     localStorage.setItem('aisha_unlocked', '1');
+    const badge = document.querySelector('.uses-badge');
+    if(badge) badge.style.display = 'none';
     const st = document.getElementById('ge-check-status');
     if(st){ st.style.color = '#4ade80'; st.textContent = '✅ Шексіз мүмкіндік ашылды!'; }
     setTimeout(()=>{ document.getElementById('ge-paywall').style.display = 'none'; }, 1500);
@@ -1062,9 +1064,15 @@
         const link = `${location.origin}/play/${d.id}`;
         document.getElementById('ge-link-text').textContent = link;
         linkBox.style.display = 'block';
-        status.textContent = remaining > 0
-          ? `✅ Сақталды! Тегін қалды: ${remaining}/${FREE_LIMIT}`
-          : `✅ Сақталды! Тегін сілтемелер таусылды. Келесі ойын үшін төлем жасаңыз.`;
+        if(isUnlocked){
+          const badge = document.querySelector('.uses-badge');
+          if(badge) badge.style.display = 'none';
+          status.textContent = '✅ Сақталды!';
+        } else {
+          status.textContent = remaining > 0
+            ? `✅ Сақталды! Тегін қалды: ${remaining}/${FREE_LIMIT}`
+            : `✅ Сақталды! Тегін сілтемелер таусылды. Келесі ойын үшін төлем жасаңыз.`;
+        }
       } else {
         status.textContent = d.error||'Қате болды';
       }

@@ -336,6 +336,16 @@ def api_limit_hit():
             )
         except Exception as e:
             print(f'limit-hit notify error: {e}')
+    # Мұғалімнің tg_id-ін pending деп белгіле (start басқанда лимит бітті деп жазу үшін)
+    if tg_id:
+        try:
+            with engine.begin() as c:
+                c.execute(
+                    text("INSERT INTO tg_sessions (chat_id, status) VALUES (:cid, 'pending') ON CONFLICT (chat_id) DO NOTHING"),
+                    {'cid': tg_id}
+                )
+        except Exception as e:
+            print(f'tg_sessions limit-hit insert error: {e}')
     # Мұғалімге Telegram хабарлама жібер
     if bot_token and tg_id:
         try:
@@ -541,20 +551,65 @@ def api_tg_webhook():
         photo    = message.get('photo')
 
         if text_msg == '/start':
-            welcome = (
-                '👋 Сәлем, мұғалім!\n\n'
-                '🎮 AI Aisha платформасында 3 тегін ойын жасай аласыз.\n\n'
-                f'📱 Платформаға кіру:\n{hub_url}?tg={chat_id}\n\n'
-                '💡 Лимит біткен соң чек суретін осы ботқа жіберіңіз — біз растаймыз!'
-            )
+            # Лимит статусын тексер
+            tg_status = None
             try:
-                http_req.post(
-                    f'https://api.telegram.org/bot{bot_token}/sendMessage',
-                    json={'chat_id': chat_id, 'text': welcome},
-                    timeout=5
+                with engine.connect() as c:
+                    row_ts = c.execute(
+                        text("SELECT status FROM tg_sessions WHERE chat_id=:cid"),
+                        {'cid': chat_id}
+                    ).fetchone()
+                if row_ts:
+                    tg_status = row_ts[0]
+            except Exception:
+                pass
+
+            if tg_status == 'pending':
+                msg = (
+                    '🔔 <b>Тегін нұсқаңыз таусылды!</b>\n\n'
+                    '3 тегін ойын жасалды.\n\n'
+                    '💳 Жалғастыру үшін Kaspi арқылы аудару:\n'
+                    '<b>📱 8 771 510 4948</b>\n'
+                    '👤 Сахибжамал А\n\n'
+                    'Төлеп болған соң <b>чек суретін осы ботқа жіберіңіз</b> — біз растаймыз!'
                 )
-            except Exception as e:
-                print(f'start message error: {e}')
+                try:
+                    http_req.post(
+                        f'https://api.telegram.org/bot{bot_token}/sendMessage',
+                        json={'chat_id': chat_id, 'parse_mode': 'HTML', 'text': msg},
+                        timeout=5
+                    )
+                except Exception as e:
+                    print(f'start limit message error: {e}')
+            elif tg_status == 'unlocked':
+                msg = (
+                    '✅ <b>Аккаунтіңіз белсенді!</b>\n\n'
+                    f'📱 Платформаға кіру:\n{hub_url}?tg={chat_id}\n\n'
+                    '🎮 Шексіз ойын жасай аласыз!'
+                )
+                try:
+                    http_req.post(
+                        f'https://api.telegram.org/bot{bot_token}/sendMessage',
+                        json={'chat_id': chat_id, 'parse_mode': 'HTML', 'text': msg},
+                        timeout=5
+                    )
+                except Exception as e:
+                    print(f'start unlocked message error: {e}')
+            else:
+                welcome = (
+                    '👋 Сәлем, мұғалім!\n\n'
+                    '🎮 AI Aisha платформасында 3 тегін ойын жасай аласыз.\n\n'
+                    f'📱 Платформаға кіру:\n{hub_url}?tg={chat_id}\n\n'
+                    '💡 Лимит біткен соң чек суретін осы ботқа жіберіңіз — біз растаймыз!'
+                )
+                try:
+                    http_req.post(
+                        f'https://api.telegram.org/bot{bot_token}/sendMessage',
+                        json={'chat_id': chat_id, 'text': welcome},
+                        timeout=5
+                    )
+                except Exception as e:
+                    print(f'start message error: {e}')
 
         elif photo and admin_id:
             file_id  = photo[-1]['file_id']
