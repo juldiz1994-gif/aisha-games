@@ -574,7 +574,42 @@ def api_tg_webhook():
         text_msg = (message.get('text') or '').strip()
         photo    = message.get('photo')
 
-        if text_msg == '/start':
+        if text_msg and text_msg.startswith('/unlock ') and chat_id == admin_id:
+            target = text_msg[8:].strip()
+            if target:
+                now_ts = int(time.time())
+                try:
+                    with engine.begin() as c:
+                        c.execute(
+                            text("INSERT INTO tg_sessions (chat_id, status, unlocked_at) VALUES (:cid, 'unlocked', :ts) ON CONFLICT (chat_id) DO UPDATE SET status='unlocked', unlocked_at=:ts"),
+                            {'cid': target, 'ts': now_ts}
+                        )
+                    http_req.post(
+                        f'https://api.telegram.org/bot{bot_token}/sendMessage',
+                        json={'chat_id': chat_id, 'text': f'✅ {target} — шексіз мүмкіндік берілді!'},
+                        timeout=5
+                    )
+                    http_req.post(
+                        f'https://api.telegram.org/bot{bot_token}/sendMessage',
+                        json={
+                            'chat_id': target,
+                            'parse_mode': 'HTML',
+                            'text': (
+                                '✅ <b>Сіздің шексіз пайдалану мерзіміңіз белсендірілді!</b>\n\n'
+                                'Платформаға кіріп ойын жасай аласыз.\n'
+                                f'📱 {hub_url}?tg={target}'
+                            )
+                        },
+                        timeout=5
+                    )
+                except Exception as e:
+                    http_req.post(
+                        f'https://api.telegram.org/bot{bot_token}/sendMessage',
+                        json={'chat_id': chat_id, 'text': f'❌ Қате: {e}'},
+                        timeout=5
+                    )
+
+        elif text_msg == '/start':
             # Лимит статусын тексер
             tg_status = None
             tg_unlocked_at = None
