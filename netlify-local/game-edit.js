@@ -10,6 +10,12 @@
   const PLAY_ID = params.get('play');
   const EDIT_MODE = params.get('edit') === '1';
 
+  // Telegram chat_id URL-ден сақта
+  (function(){
+    const tg = params.get('tg');
+    if(tg) localStorage.setItem('aisha_tg_id', tg);
+  })();
+
   /* ── Play mode ── */
   if(PLAY_ID){
     fetch(`${API}/api/game/${PLAY_ID}`)
@@ -211,29 +217,45 @@
       </label>
       <div id="ge-check-status" style="font-size:0.78rem;margin-bottom:16px;min-height:20px;color:rgba(255,255,255,0.4);"></div>
 
+      <div style="border-top:1px solid rgba(255,255,255,0.08);margin:12px 0 10px;padding-top:12px;">
+        <p style="color:rgba(255,255,255,0.5);font-size:0.78rem;margin:0 0 8px;">Немесе чекті Telegram ботқа жіберіңіз:</p>
+        <a id="ge-tg-link" href="#" target="_blank" style="display:block;background:#1a2744;border:1px solid rgba(100,149,237,0.3);border-radius:10px;padding:10px 16px;color:#93c5fd;font-size:0.82rem;font-weight:600;text-decoration:none;margin-bottom:6px;">✈️ Telegram арқылы жіберу</a>
+        <div style="color:rgba(255,255,255,0.3);font-size:0.7rem;">Чек жіберген соң осы беттен шықпаңыз — растау автоматты ашылады</div>
+      </div>
+
       <button onclick="document.getElementById('ge-paywall').style.display='none'" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);border-radius:8px;padding:8px 22px;cursor:pointer;font-size:0.78rem;font-family:inherit;">Жабу</button>
     </div>`;
   document.body.appendChild(paywall);
 
   let _unlockPollId = null;
 
+  function _unlockSuccess() {
+    clearInterval(_unlockPollId); _unlockPollId = null;
+    localStorage.removeItem('aisha_free_saves');
+    localStorage.removeItem('aisha_limit_notified');
+    localStorage.setItem('aisha_unlocked', '1');
+    const st = document.getElementById('ge-check-status');
+    if(st){ st.style.color = '#4ade80'; st.textContent = '✅ Шексіз мүмкіндік ашылды!'; }
+    setTimeout(()=>{ document.getElementById('ge-paywall').style.display = 'none'; }, 1500);
+  }
+
   function _startUnlockPoll(deviceId) {
     if(_unlockPollId) clearInterval(_unlockPollId);
     let tries = 0;
+    const tgId = localStorage.getItem('aisha_tg_id');
     _unlockPollId = setInterval(async () => {
       tries++;
       if(tries > 120){ clearInterval(_unlockPollId); _unlockPollId = null; return; }
       try {
-        const res = await fetch(`${API}/api/check-unlock?device=${encodeURIComponent(deviceId)}`);
-        const data = await res.json();
-        if(data.unlocked){
-          clearInterval(_unlockPollId); _unlockPollId = null;
-          localStorage.removeItem('aisha_free_saves');
-          localStorage.removeItem('aisha_limit_notified');
-          localStorage.setItem('aisha_unlocked', '1');
-          const st = document.getElementById('ge-check-status');
-          if(st){ st.style.color = '#4ade80'; st.textContent = '✅ Шексіз мүмкіндік ашылды!'; }
-          setTimeout(()=>{ document.getElementById('ge-paywall').style.display = 'none'; }, 1500);
+        if(deviceId) {
+          const res = await fetch(`${API}/api/check-unlock?device=${encodeURIComponent(deviceId)}`);
+          const data = await res.json();
+          if(data.unlocked){ _unlockSuccess(); return; }
+        }
+        if(tgId) {
+          const tgRes = await fetch(`${API}/api/check-tg-unlock?tg=${encodeURIComponent(tgId)}`);
+          const tgData = await tgRes.json();
+          if(tgData.unlocked){ _unlockSuccess(); return; }
         }
       } catch(e){}
     }, 5000);
@@ -1000,9 +1022,22 @@
       // Telegram-ға тек бір рет хабарлама жібер
       if(!localStorage.getItem('aisha_limit_notified')){
         localStorage.setItem('aisha_limit_notified','1');
-        fetch(`${API}/api/limit-hit`,{method:'POST'}).catch(()=>{});
+        const _tgId = localStorage.getItem('aisha_tg_id') || '';
+        fetch(`${API}/api/limit-hit`,{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({tg_id: _tgId})
+        }).catch(()=>{});
       }
       document.getElementById('ge-paywall').style.display = 'flex';
+      // Bot сілтемесін жүкте
+      fetch(`${API}/api/bot-info`).then(r=>r.json()).then(d=>{
+        const link = document.getElementById('ge-tg-link');
+        if(link && d.username) link.href = `https://t.me/${d.username}`;
+      }).catch(()=>{});
+      // Растауды күт (device немесе tg арқылы)
+      const _devId = localStorage.getItem('aisha_device_id') || '';
+      if(_devId || localStorage.getItem('aisha_tg_id')) _startUnlockPoll(_devId);
       return;
     }
 

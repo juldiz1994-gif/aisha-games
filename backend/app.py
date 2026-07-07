@@ -1,4 +1,6 @@
 import os, json, hashlib, secrets, time, base64, io
+
+BOT_USERNAME = None
 from flask import Flask, request, jsonify, send_from_directory, redirect
 from flask_cors import CORS
 from sqlalchemy import create_engine, text
@@ -74,6 +76,11 @@ def init_db():
         )'''))
         c.execute(text(f'''CREATE TABLE IF NOT EXISTS device_unlocks (
             device_id TEXT PRIMARY KEY,
+            status TEXT DEFAULT 'pending',
+            created_at BIGINT DEFAULT ({NOW_TS})
+        )'''))
+        c.execute(text(f'''CREATE TABLE IF NOT EXISTS tg_sessions (
+            chat_id TEXT PRIMARY KEY,
             status TEXT DEFAULT 'pending',
             created_at BIGINT DEFAULT ({NOW_TS})
         )'''))
@@ -304,6 +311,8 @@ def _create_unlock_code():
 
 @app.route('/api/limit-hit', methods=['POST'])
 def api_limit_hit():
+    data      = request.get_json() or {}
+    tg_id     = str(data.get('tg_id', '') or '').strip()
     cfg       = load_config()
     bot_token = os.environ.get('BOT_TOKEN') or cfg.get('bot_token', '')
     admin_id  = os.environ.get('ADMIN_TG_ID') or str(cfg.get('admin_tg_id', ''))
@@ -327,14 +336,43 @@ def api_limit_hit():
             )
         except Exception as e:
             print(f'limit-hit notify error: {e}')
+    # Мұғалімге Telegram хабарлама жібер
+    if bot_token and tg_id:
+        try:
+            hub_url = os.environ.get('HUB_URL') or cfg.get('hub_url', '')
+            http_req.post(
+                f'https://api.telegram.org/bot{bot_token}/sendMessage',
+                json={
+                    'chat_id': tg_id,
+                    'parse_mode': 'HTML',
+                    'text': (
+                        '🔔 <b>Тегін нұсқаңыз таусылды!</b>\n\n'
+                        '3 тегін ойын жасалды.\n\n'
+                        '💳 Жалғастыру үшін Kaspi арқылы аудару:\n'
+                        '<b>📱 8 771 510 4948</b>\n'
+                        '👤 Сахибжамал А\n\n'
+                        'Төлеп болған соң <b>чек суретін осы ботқа жіберіңіз</b> — біз растаймыз!'
+                    )
+                },
+                timeout=5
+            )
+        except Exception as e:
+            print(f'limit-hit teacher notify error: {e}')
     return jsonify({'ok': True})
 
 
 def _setup_webhook():
+    global BOT_USERNAME
     cfg       = load_config()
     bot_token = os.environ.get('BOT_TOKEN') or cfg.get('bot_token', '')
     hub_url   = os.environ.get('HUB_URL') or cfg.get('hub_url', '')
     if bot_token and hub_url:
+        try:
+            me = http_req.get(f'https://api.telegram.org/bot{bot_token}/getMe', timeout=5).json()
+            if me.get('ok'):
+                BOT_USERNAME = me['result'].get('username', '')
+        except Exception as e:
+            print(f'getMe error: {e}')
         try:
             http_req.post(
                 f'https://api.telegram.org/bot{bot_token}/setWebhook',
@@ -390,6 +428,29 @@ def api_submit_check():
     return jsonify({'ok': True})
 
 
+@app.route('/api/bot-info')
+def api_bot_info():
+    return jsonify({'username': BOT_USERNAME or ''})
+
+
+@app.route('/api/check-tg-unlock')
+def api_check_tg_unlock():
+    chat_id = request.args.get('tg', '').strip()
+    if not chat_id:
+        return jsonify({'unlocked': False})
+    try:
+        with engine.connect() as c:
+            row = c.execute(
+                text("SELECT status FROM tg_sessions WHERE chat_id=:cid"),
+                {'cid': chat_id}
+            ).fetchone()
+        if row and row[0] == 'unlocked':
+            return jsonify({'unlocked': True})
+    except Exception as e:
+        print(f'check-tg-unlock error: {e}')
+    return jsonify({'unlocked': False})
+
+
 @app.route('/api/check-unlock')
 def api_check_unlock():
     device_id = request.args.get('device', '').strip()
@@ -410,10 +471,17 @@ def api_check_unlock():
 
 @app.route('/api/tg-webhook', methods=['POST'])
 def api_tg_webhook():
-    data     = request.get_json() or {}
+    data      = request.get_json() or {}
+    cfg       = load_config()
+    bot_token = os.environ.get('BOT_TOKEN') or cfg.get('bot_token', '')
+    admin_id  = os.environ.get('ADMIN_TG_ID') or str(cfg.get('admin_tg_id', ''))
+    hub_url   = os.environ.get('HUB_URL') or cfg.get('hub_url', '')
+
+    # ── Callback (inline button) ──
     callback = data.get('callback_query')
     if callback:
         cdata = callback.get('data', '')
+
         if cdata.startswith('unlock:'):
             device_id = cdata[7:]
             try:
@@ -424,8 +492,6 @@ def api_tg_webhook():
                     )
             except Exception as e:
                 print(f'tg-webhook unlock error: {e}')
-            cfg       = load_config()
-            bot_token = os.environ.get('BOT_TOKEN') or cfg.get('bot_token', '')
             if bot_token:
                 try:
                     http_req.post(
@@ -435,6 +501,85 @@ def api_tg_webhook():
                     )
                 except Exception:
                     pass
+
+        elif cdata.startswith('tg_unlock:'):
+            chat_id = cdata[10:]
+            try:
+                with engine.begin() as c:
+                    c.execute(
+                        text("INSERT INTO tg_sessions (chat_id, status) VALUES (:cid, 'unlocked') ON CONFLICT (chat_id) DO UPDATE SET status='unlocked'"),
+                        {'cid': chat_id}
+                    )
+            except Exception as e:
+                print(f'tg_unlock error: {e}')
+            if bot_token:
+                try:
+                    http_req.post(
+                        f'https://api.telegram.org/bot{bot_token}/answerCallbackQuery',
+                        json={'callback_query_id': callback['id'], 'text': '✅ Мұғалімге шексіз мүмкіндік берілді!'},
+                        timeout=5
+                    )
+                    http_req.post(
+                        f'https://api.telegram.org/bot{bot_token}/sendMessage',
+                        json={
+                            'chat_id': chat_id,
+                            'parse_mode': 'HTML',
+                            'text': '✅ <b>Сіздің аккаунтіңіз белсендірілді!</b>\n\nЕнді шексіз ойын жасай аласыз. Платформаға оралыңыз.'
+                        },
+                        timeout=5
+                    )
+                except Exception:
+                    pass
+
+        return jsonify({'ok': True})
+
+    # ── Message ──
+    message = data.get('message')
+    if message and bot_token:
+        chat_id  = str(message.get('chat', {}).get('id', ''))
+        text_msg = (message.get('text') or '').strip()
+        photo    = message.get('photo')
+
+        if text_msg == '/start':
+            welcome = (
+                '👋 Сәлем, мұғалім!\n\n'
+                '🎮 AI Aisha платформасында 3 тегін ойын жасай аласыз.\n\n'
+                f'📱 Платформаға кіру:\n{hub_url}?tg={chat_id}\n\n'
+                '💡 Лимит біткен соң чек суретін осы ботқа жіберіңіз — біз растаймыз!'
+            )
+            try:
+                http_req.post(
+                    f'https://api.telegram.org/bot{bot_token}/sendMessage',
+                    json={'chat_id': chat_id, 'text': welcome},
+                    timeout=5
+                )
+            except Exception as e:
+                print(f'start message error: {e}')
+
+        elif photo and admin_id:
+            file_id  = photo[-1]['file_id']
+            keyboard = {'inline_keyboard': [[
+                {'text': '✅ Растау — шексіз мүмкіндік бер', 'callback_data': f'tg_unlock:{chat_id}'}
+            ]]}
+            try:
+                http_req.post(
+                    f'https://api.telegram.org/bot{bot_token}/sendPhoto',
+                    json={
+                        'chat_id': admin_id,
+                        'photo': file_id,
+                        'caption': f'💳 Мұғалімнен чек келді!\nTG ID: {chat_id}\nТексеріп «Растау» батырмасын басыңыз.',
+                        'reply_markup': keyboard
+                    },
+                    timeout=10
+                )
+                http_req.post(
+                    f'https://api.telegram.org/bot{bot_token}/sendMessage',
+                    json={'chat_id': chat_id, 'text': '✅ Чегіңіз жіберілді! Растауды күтіңіз...'},
+                    timeout=5
+                )
+            except Exception as e:
+                print(f'photo forward error: {e}')
+
     return jsonify({'ok': True})
 
 
