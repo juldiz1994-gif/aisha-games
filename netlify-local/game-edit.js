@@ -197,31 +197,21 @@
   paywall.id = 'ge-paywall';
   paywall.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:99999;align-items:center;justify-content:center;';
   paywall.innerHTML = `
-    <div style="background:#0a0c1e;border:1px solid rgba(255,200,100,0.18);border-radius:20px;padding:32px 26px;text-align:center;max-width:360px;width:90%;font-family:'Segoe UI',sans-serif;max-height:92vh;overflow-y:auto;">
+    <div style="background:#0a0c1e;border:1px solid rgba(255,200,100,0.18);border-radius:20px;padding:32px 26px;text-align:center;max-width:360px;width:90%;font-family:'Segoe UI',sans-serif;">
       <div style="font-size:2.8rem;margin-bottom:10px;">🔒</div>
       <h2 style="color:#fff;font-size:1.15rem;font-weight:800;margin:0 0 6px;">Тегін нұсқа бітті</h2>
       <p style="color:rgba(255,255,255,0.5);font-size:0.82rem;margin:0 0 18px;line-height:1.6;">3 тегін ойын жасалды. Жалғастыру үшін төлем жасаңыз.</p>
 
-      <div style="background:rgba(255,200,80,0.08);border:1px solid rgba(255,200,80,0.28);border-radius:12px;padding:14px 16px;margin-bottom:16px;text-align:left;">
+      <div style="background:rgba(255,200,80,0.08);border:1px solid rgba(255,200,80,0.28);border-radius:12px;padding:14px 16px;margin-bottom:20px;text-align:left;">
         <div style="color:#fbbf24;font-weight:700;font-size:0.72rem;letter-spacing:0.08em;margin-bottom:10px;">💳 KASPI АРҚЫЛЫ АУДАРУ</div>
         <div style="color:#fff;font-size:1.25rem;font-weight:800;letter-spacing:0.05em;margin-bottom:3px;">📱 8 771 510 4948</div>
         <div style="color:rgba(255,255,255,0.65);font-size:0.85rem;">👤 Сахибжамал А</div>
         <div style="color:rgba(255,255,255,0.3);font-size:0.7rem;margin-top:8px;">Kaspi-де іздегенде осы ат шығады — тексеріңіз</div>
       </div>
 
-      <p style="color:rgba(255,255,255,0.55);font-size:0.8rem;margin:0 0 10px;">Төлеп болған соң чекті (скриншотты) жіберіңіз:</p>
-
-      <label id="ge-check-label" style="display:block;background:#1e3a5f;border:1px solid rgba(59,130,246,0.35);border-radius:10px;padding:11px 16px;cursor:pointer;color:#93c5fd;font-size:0.82rem;font-weight:600;margin-bottom:8px;">
-        📎 Чек суретін жіберу
-        <input type="file" accept="image/*" style="display:none;" id="ge-check-file" onchange="window.__geSendCheck(this)">
-      </label>
-      <div id="ge-check-status" style="font-size:0.78rem;margin-bottom:16px;min-height:20px;color:rgba(255,255,255,0.4);"></div>
-
-      <div style="border-top:1px solid rgba(255,255,255,0.08);margin:12px 0 10px;padding-top:12px;">
-        <p style="color:rgba(255,255,255,0.5);font-size:0.78rem;margin:0 0 8px;">Немесе чекті Telegram ботқа жіберіңіз:</p>
-        <a id="ge-tg-link" href="#" target="_blank" style="display:block;background:#1a2744;border:1px solid rgba(100,149,237,0.3);border-radius:10px;padding:10px 16px;color:#93c5fd;font-size:0.82rem;font-weight:600;text-decoration:none;margin-bottom:6px;">✈️ Telegram арқылы жіберу</a>
-        <div style="color:rgba(255,255,255,0.3);font-size:0.7rem;">Чек жіберген соң осы беттен шықпаңыз — растау автоматты ашылады</div>
-      </div>
+      <p style="color:rgba(255,255,255,0.6);font-size:0.82rem;margin:0 0 10px;font-weight:600;">Төлеп болған соң чек суретін ботқа жіберіңіз:</p>
+      <a id="ge-tg-link" href="#" target="_blank" style="display:block;background:#1a2744;border:1px solid rgba(100,149,237,0.35);border-radius:12px;padding:13px 16px;color:#93c5fd;font-size:0.9rem;font-weight:700;text-decoration:none;margin-bottom:8px;">✈️ Telegram ботқа жіберу</a>
+      <div id="ge-check-status" style="font-size:0.75rem;color:rgba(255,255,255,0.35);margin-bottom:16px;">Чек жіберген соң осы беттен шықпаңыз — растау автоматты ашылады</div>
 
       <button onclick="document.getElementById('ge-paywall').style.display='none'" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);border-radius:8px;padding:8px 22px;cursor:pointer;font-size:0.78rem;font-family:inherit;">Жабу</button>
     </div>`;
@@ -241,65 +231,21 @@
     setTimeout(()=>{ document.getElementById('ge-paywall').style.display = 'none'; }, 1500);
   }
 
-  function _startUnlockPoll(deviceId) {
+  function _startUnlockPoll() {
     if(_unlockPollId) clearInterval(_unlockPollId);
     let tries = 0;
     const tgId = localStorage.getItem('aisha_tg_id');
-    // tg_id бар болса тек tg арқылы тексер (device_id ортақ болып кросс-unlock болмасын)
+    if(!tgId) return;
     _unlockPollId = setInterval(async () => {
       tries++;
       if(tries > 120){ clearInterval(_unlockPollId); _unlockPollId = null; return; }
       try {
-        if(tgId) {
-          // tg_id бар болса ТЕК tg арқылы тексер — device_id ортақ болса да кросс-unlock болмайды
-          const tgRes = await fetch(`${API}/api/check-tg-unlock?tg=${encodeURIComponent(tgId)}`);
-          if((await tgRes.json()).unlocked){ _unlockSuccess(); return; }
-        } else if(deviceId) {
-          // tg_id жоқ болса ғана device_id арқылы тексер
-          const res = await fetch(`${API}/api/check-unlock?device=${encodeURIComponent(deviceId)}`);
-          if((await res.json()).unlocked){ _unlockSuccess(); return; }
-        }
+        const res = await fetch(`${API}/api/check-tg-unlock?tg=${encodeURIComponent(tgId)}`);
+        if((await res.json()).unlocked){ _unlockSuccess(); return; }
       } catch(e){}
     }, 5000);
   }
 
-  window.__geSendCheck = async function(input) {
-    const file = input.files[0];
-    if(!file) return;
-    const status = document.getElementById('ge-check-status');
-    const label  = document.getElementById('ge-check-label');
-    status.style.color = 'rgba(255,255,255,0.4)';
-    status.textContent = '⏳ Жіберілуде...';
-    let deviceId = localStorage.getItem('aisha_device_id');
-    if(!deviceId){
-      deviceId = 'dev_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-      localStorage.setItem('aisha_device_id', deviceId);
-    }
-    const reader = new FileReader();
-    reader.onload = async e => {
-      try {
-        const res = await fetch(`${API}/api/submit-check`, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({screenshot: e.target.result, device_id: deviceId, tg_id: localStorage.getItem('aisha_tg_id') || ''})
-        });
-        const data = await res.json();
-        if(data.ok){
-          status.style.color = '#fbbf24';
-          status.textContent = '✅ Чек жіберілді! Растауды күтіңіз...';
-          if(label) label.style.pointerEvents = 'none';
-          _startUnlockPoll(deviceId);
-        } else {
-          status.style.color = '#f87171';
-          status.textContent = '❌ Жіберу қатесі. Қайта көріңіз.';
-        }
-      } catch(err){
-        status.style.color = '#f87171';
-        status.textContent = '❌ Қате. Қайта көріңіз.';
-      }
-    };
-    reader.readAsDataURL(file);
-  };
 
   // Auto-open panel when page loads with ?edit=1
   window.addEventListener('load', ()=>{ setTimeout(openPanel, 300); });
@@ -1037,9 +983,8 @@
         const link = document.getElementById('ge-tg-link');
         if(link && d.username) link.href = `https://t.me/${d.username}`;
       }).catch(()=>{});
-      // Растауды күт (device немесе tg арқылы)
-      const _devId = localStorage.getItem('aisha_device_id') || '';
-      if(_devId || localStorage.getItem('aisha_tg_id')) _startUnlockPoll(_devId);
+      // Растауды күт (tg арқылы)
+      _startUnlockPoll();
       return;
     }
 
