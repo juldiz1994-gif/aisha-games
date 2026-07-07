@@ -72,6 +72,11 @@ def init_db():
             used BOOLEAN DEFAULT FALSE,
             created_at BIGINT DEFAULT ({NOW_TS})
         )'''))
+        c.execute(text(f'''CREATE TABLE IF NOT EXISTS device_unlocks (
+            device_id TEXT PRIMARY KEY,
+            status TEXT DEFAULT 'pending',
+            created_at BIGINT DEFAULT ({NOW_TS})
+        )'''))
 
     # Migrations — add new columns if missing
     if USE_PG:
@@ -325,12 +330,39 @@ def api_limit_hit():
     return jsonify({'ok': True})
 
 
+def _setup_webhook():
+    cfg       = load_config()
+    bot_token = os.environ.get('BOT_TOKEN') or cfg.get('bot_token', '')
+    hub_url   = os.environ.get('HUB_URL') or cfg.get('hub_url', '')
+    if bot_token and hub_url:
+        try:
+            http_req.post(
+                f'https://api.telegram.org/bot{bot_token}/setWebhook',
+                json={'url': f'{hub_url}/api/tg-webhook'},
+                timeout=5
+            )
+        except Exception as e:
+            print(f'webhook setup error: {e}')
+
+_setup_webhook()
+
+
 @app.route('/api/submit-check', methods=['POST'])
 def api_submit_check():
     data       = request.get_json() or {}
     screenshot = data.get('screenshot', '')
+    device_id  = data.get('device_id', '').strip()
     if not screenshot:
         return jsonify({'ok': False, 'error': 'screenshot жоқ'}), 400
+    if device_id:
+        try:
+            with engine.begin() as c:
+                c.execute(
+                    text('INSERT INTO device_unlocks (device_id, status) VALUES (:did, :st) ON CONFLICT (device_id) DO UPDATE SET status=:st'),
+                    {'did': device_id, 'st': 'pending'}
+                )
+        except Exception as e:
+            print(f'device_unlocks insert error: {e}')
     cfg       = load_config()
     bot_token = os.environ.get('BOT_TOKEN') or cfg.get('bot_token', '')
     admin_id  = os.environ.get('ADMIN_TG_ID') or str(cfg.get('admin_tg_id', ''))
@@ -338,17 +370,71 @@ def api_submit_check():
         try:
             data_part = screenshot.split(',', 1)[-1] if ',' in screenshot else screenshot
             img_bytes = base64.b64decode(data_part)
+            keyboard  = {'inline_keyboard': [[
+                {'text': '✅ Растау — шексіз мүмкіндік бер', 'callback_data': f'unlock:{device_id}'}
+            ]]} if device_id else None
+            payload = {
+                'chat_id': admin_id,
+                'caption': '💳 Мұғалімнен чек келді!\nТөлемді тексеріп, «Растау» батырмасын басыңыз.'
+            }
+            if keyboard:
+                payload['reply_markup'] = json.dumps(keyboard)
             http_req.post(
                 f'https://api.telegram.org/bot{bot_token}/sendPhoto',
-                data={
-                    'chat_id': admin_id,
-                    'caption': '💳 Мұғалімнен чек келді!\nТөлемді тексеріп, растау кодын жіберіңіз.'
-                },
+                data=payload,
                 files={'photo': ('check.jpg', io.BytesIO(img_bytes), 'image/jpeg')},
                 timeout=10
             )
         except Exception as e:
             print(f'submit-check error: {e}')
+    return jsonify({'ok': True})
+
+
+@app.route('/api/check-unlock')
+def api_check_unlock():
+    device_id = request.args.get('device', '').strip()
+    if not device_id:
+        return jsonify({'unlocked': False})
+    try:
+        with engine.connect() as c:
+            row = c.execute(
+                text("SELECT status FROM device_unlocks WHERE device_id=:did"),
+                {'did': device_id}
+            ).fetchone()
+        if row and row[0] == 'unlocked':
+            return jsonify({'unlocked': True})
+    except Exception as e:
+        print(f'check-unlock error: {e}')
+    return jsonify({'unlocked': False})
+
+
+@app.route('/api/tg-webhook', methods=['POST'])
+def api_tg_webhook():
+    data     = request.get_json() or {}
+    callback = data.get('callback_query')
+    if callback:
+        cdata = callback.get('data', '')
+        if cdata.startswith('unlock:'):
+            device_id = cdata[7:]
+            try:
+                with engine.begin() as c:
+                    c.execute(
+                        text("UPDATE device_unlocks SET status='unlocked' WHERE device_id=:did"),
+                        {'did': device_id}
+                    )
+            except Exception as e:
+                print(f'tg-webhook unlock error: {e}')
+            cfg       = load_config()
+            bot_token = os.environ.get('BOT_TOKEN') or cfg.get('bot_token', '')
+            if bot_token:
+                try:
+                    http_req.post(
+                        f'https://api.telegram.org/bot{bot_token}/answerCallbackQuery',
+                        json={'callback_query_id': callback['id'], 'text': '✅ Мұғалімге шексіз мүмкіндік берілді!'},
+                        timeout=5
+                    )
+                except Exception:
+                    pass
     return jsonify({'ok': True})
 
 

@@ -205,88 +205,76 @@
 
       <p style="color:rgba(255,255,255,0.55);font-size:0.8rem;margin:0 0 10px;">Төлеп болған соң чекті (скриншотты) жіберіңіз:</p>
 
-      <label style="display:block;background:#1e3a5f;border:1px solid rgba(59,130,246,0.35);border-radius:10px;padding:11px 16px;cursor:pointer;color:#93c5fd;font-size:0.82rem;font-weight:600;margin-bottom:8px;">
+      <label id="ge-check-label" style="display:block;background:#1e3a5f;border:1px solid rgba(59,130,246,0.35);border-radius:10px;padding:11px 16px;cursor:pointer;color:#93c5fd;font-size:0.82rem;font-weight:600;margin-bottom:8px;">
         📎 Чек суретін жіберу
         <input type="file" accept="image/*" style="display:none;" id="ge-check-file" onchange="window.__geSendCheck(this)">
       </label>
-      <div id="ge-check-status" style="font-size:0.76rem;margin-bottom:14px;min-height:16px;color:rgba(255,255,255,0.4);"></div>
-
-      <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:14px;margin-bottom:14px;">
-        <div style="color:rgba(255,255,255,0.35);font-size:0.72rem;margin-bottom:8px;">Кодыңыз болса:</div>
-        <div style="display:flex;gap:8px;">
-          <input id="ge-unlock-code" placeholder="Кодты енгізіңіз" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:9px 12px;color:#fff;font-size:0.82rem;outline:none;font-family:inherit;">
-          <button onclick="window.__geUnlock()" style="background:#22c55e;border:none;color:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:0.82rem;font-weight:700;white-space:nowrap;font-family:inherit;">Растау</button>
-        </div>
-        <div id="ge-unlock-msg" style="font-size:0.74rem;margin-top:6px;min-height:16px;"></div>
-      </div>
+      <div id="ge-check-status" style="font-size:0.78rem;margin-bottom:16px;min-height:20px;color:rgba(255,255,255,0.4);"></div>
 
       <button onclick="document.getElementById('ge-paywall').style.display='none'" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);border-radius:8px;padding:8px 22px;cursor:pointer;font-size:0.78rem;font-family:inherit;">Жабу</button>
     </div>`;
   document.body.appendChild(paywall);
 
+  let _unlockPollId = null;
+
+  function _startUnlockPoll(deviceId) {
+    if(_unlockPollId) clearInterval(_unlockPollId);
+    let tries = 0;
+    _unlockPollId = setInterval(async () => {
+      tries++;
+      if(tries > 120){ clearInterval(_unlockPollId); _unlockPollId = null; return; }
+      try {
+        const res = await fetch(`${API}/api/check-unlock?device=${encodeURIComponent(deviceId)}`);
+        const data = await res.json();
+        if(data.unlocked){
+          clearInterval(_unlockPollId); _unlockPollId = null;
+          localStorage.removeItem('aisha_free_saves');
+          localStorage.removeItem('aisha_limit_notified');
+          localStorage.setItem('aisha_unlocked', '1');
+          const st = document.getElementById('ge-check-status');
+          if(st){ st.style.color = '#4ade80'; st.textContent = '✅ Шексіз мүмкіндік ашылды!'; }
+          setTimeout(()=>{ document.getElementById('ge-paywall').style.display = 'none'; }, 1500);
+        }
+      } catch(e){}
+    }, 5000);
+  }
+
   window.__geSendCheck = async function(input) {
     const file = input.files[0];
     if(!file) return;
     const status = document.getElementById('ge-check-status');
+    const label  = document.getElementById('ge-check-label');
     status.style.color = 'rgba(255,255,255,0.4)';
     status.textContent = '⏳ Жіберілуде...';
-    try {
-      const reader = new FileReader();
-      reader.onload = async e => {
-        try {
-          const res = await fetch(`${API}/api/submit-check`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({screenshot: e.target.result})
-          });
-          const data = await res.json();
-          if(data.ok){
-            status.style.color = '#4ade80';
-            status.textContent = '✅ Чек жіберілді! Растауды күтіңіз.';
-          } else {
-            status.style.color = '#f87171';
-            status.textContent = '❌ Жіберу қатесі. Қайта көріңіз.';
-          }
-        } catch(err){
+    let deviceId = localStorage.getItem('aisha_device_id');
+    if(!deviceId){
+      deviceId = 'dev_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem('aisha_device_id', deviceId);
+    }
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        const res = await fetch(`${API}/api/submit-check`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({screenshot: e.target.result, device_id: deviceId})
+        });
+        const data = await res.json();
+        if(data.ok){
+          status.style.color = '#fbbf24';
+          status.textContent = '✅ Чек жіберілді! Растауды күтіңіз...';
+          if(label) label.style.pointerEvents = 'none';
+          _startUnlockPoll(deviceId);
+        } else {
           status.style.color = '#f87171';
-          status.textContent = '❌ Қате. Қайта көріңіз.';
+          status.textContent = '❌ Жіберу қатесі. Қайта көріңіз.';
         }
-      };
-      reader.readAsDataURL(file);
-    } catch(e){
-      status.style.color = '#f87171';
-      status.textContent = '❌ Қате. Қайта көріңіз.';
-    }
-  };
-
-  window.__geUnlock = async function() {
-    const code = document.getElementById('ge-unlock-code').value.trim().toUpperCase();
-    if(!code) return;
-    const msg = document.getElementById('ge-unlock-msg');
-    msg.style.color = 'rgba(255,255,255,0.4)';
-    msg.textContent = '⏳ Тексерілуде...';
-    try {
-      const res = await fetch(`${API}/api/unlock`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({code})
-      });
-      const data = await res.json();
-      if(data.ok){
-        localStorage.removeItem('aisha_free_saves');
-        localStorage.removeItem('aisha_limit_notified');
-        localStorage.setItem('aisha_unlocked', '1');
-        document.getElementById('ge-paywall').style.display = 'none';
-        msg.style.color = '#4ade80';
-        msg.textContent = '✅ Шексіз мүмкіндік ашылды!';
-      } else {
-        msg.style.color = '#f87171';
-        msg.textContent = '❌ Код дұрыс емес немесе бұрын пайдаланылған';
+      } catch(err){
+        status.style.color = '#f87171';
+        status.textContent = '❌ Қате. Қайта көріңіз.';
       }
-    } catch(e){
-      msg.style.color = '#f87171';
-      msg.textContent = '❌ Қате. Қайта көріңіз.';
-    }
+    };
+    reader.readAsDataURL(file);
   };
 
   // Auto-open panel when page loads with ?edit=1
