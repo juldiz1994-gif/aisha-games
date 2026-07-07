@@ -245,19 +245,19 @@
     if(_unlockPollId) clearInterval(_unlockPollId);
     let tries = 0;
     const tgId = localStorage.getItem('aisha_tg_id');
+    // tg_id бар болса тек tg арқылы тексер (device_id ортақ болып кросс-unlock болмасын)
     _unlockPollId = setInterval(async () => {
       tries++;
       if(tries > 120){ clearInterval(_unlockPollId); _unlockPollId = null; return; }
       try {
-        if(deviceId) {
-          const res = await fetch(`${API}/api/check-unlock?device=${encodeURIComponent(deviceId)}`);
-          const data = await res.json();
-          if(data.unlocked){ _unlockSuccess(); return; }
-        }
         if(tgId) {
+          // tg_id бар болса ТЕК tg арқылы тексер — device_id ортақ болса да кросс-unlock болмайды
           const tgRes = await fetch(`${API}/api/check-tg-unlock?tg=${encodeURIComponent(tgId)}`);
-          const tgData = await tgRes.json();
-          if(tgData.unlocked){ _unlockSuccess(); return; }
+          if((await tgRes.json()).unlocked){ _unlockSuccess(); return; }
+        } else if(deviceId) {
+          // tg_id жоқ болса ғана device_id арқылы тексер
+          const res = await fetch(`${API}/api/check-unlock?device=${encodeURIComponent(deviceId)}`);
+          if((await res.json()).unlocked){ _unlockSuccess(); return; }
         }
       } catch(e){}
     }, 5000);
@@ -281,7 +281,7 @@
         const res = await fetch(`${API}/api/submit-check`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({screenshot: e.target.result, device_id: deviceId})
+          body: JSON.stringify({screenshot: e.target.result, device_id: deviceId, tg_id: localStorage.getItem('aisha_tg_id') || ''})
         });
         const data = await res.json();
         if(data.ok){

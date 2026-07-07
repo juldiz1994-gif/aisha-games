@@ -400,9 +400,21 @@ def api_submit_check():
     data       = request.get_json() or {}
     screenshot = data.get('screenshot', '')
     device_id  = data.get('device_id', '').strip()
+    tg_id      = str(data.get('tg_id', '') or '').strip()
     if not screenshot:
         return jsonify({'ok': False, 'error': 'screenshot жоқ'}), 400
-    if device_id:
+
+    # tg_id бар болса tg_sessions-қа pending жаз (device_id емес)
+    if tg_id:
+        try:
+            with engine.begin() as c:
+                c.execute(
+                    text("INSERT INTO tg_sessions (chat_id, status) VALUES (:cid, 'pending') ON CONFLICT (chat_id) DO NOTHING"),
+                    {'cid': tg_id}
+                )
+        except Exception as e:
+            print(f'tg_sessions submit-check insert error: {e}')
+    elif device_id:
         try:
             with engine.begin() as c:
                 c.execute(
@@ -411,6 +423,7 @@ def api_submit_check():
                 )
         except Exception as e:
             print(f'device_unlocks insert error: {e}')
+
     cfg       = load_config()
     bot_token = os.environ.get('BOT_TOKEN') or cfg.get('bot_token', '')
     admin_id  = os.environ.get('ADMIN_TG_ID') or str(cfg.get('admin_tg_id', ''))
@@ -418,9 +431,16 @@ def api_submit_check():
         try:
             data_part = screenshot.split(',', 1)[-1] if ',' in screenshot else screenshot
             img_bytes = base64.b64decode(data_part)
-            keyboard  = {'inline_keyboard': [[
-                {'text': '✅ Растау — шексіз мүмкіндік бер', 'callback_data': f'unlock:{device_id}'}
-            ]]} if device_id else None
+            # tg_id бар болса tg_unlock пайдалан, болмаса device_id
+            if tg_id:
+                cb_data = f'tg_unlock:{tg_id}'
+            elif device_id:
+                cb_data = f'unlock:{device_id}'
+            else:
+                cb_data = None
+            keyboard = {'inline_keyboard': [[
+                {'text': '✅ Растау — шексіз мүмкіндік бер', 'callback_data': cb_data}
+            ]]} if cb_data else None
             payload = {
                 'chat_id': admin_id,
                 'caption': '💳 Мұғалімнен чек келді!\nТөлемді тексеріп, «Растау» батырмасын басыңыз.'
