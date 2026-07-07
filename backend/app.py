@@ -82,6 +82,7 @@ def init_db():
         c.execute(text(f'''CREATE TABLE IF NOT EXISTS tg_sessions (
             chat_id TEXT PRIMARY KEY,
             status TEXT DEFAULT 'pending',
+            unlocked_at BIGINT DEFAULT NULL,
             created_at BIGINT DEFAULT ({NOW_TS})
         )'''))
 
@@ -94,6 +95,7 @@ def init_db():
             "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS free_games_used INTEGER DEFAULT 0",
             "ALTER TABLE game_configs ADD COLUMN IF NOT EXISTS use_count INTEGER DEFAULT 0",
             "ALTER TABLE game_configs ADD COLUMN IF NOT EXISTS max_uses INTEGER DEFAULT 3",
+            "ALTER TABLE tg_sessions ADD COLUMN IF NOT EXISTS unlocked_at BIGINT DEFAULT NULL",
         ]
     else:
         migs = [
@@ -103,6 +105,7 @@ def init_db():
             "ALTER TABLE teachers ADD COLUMN free_games_used INTEGER DEFAULT 0",
             "ALTER TABLE game_configs ADD COLUMN use_count INTEGER DEFAULT 0",
             "ALTER TABLE game_configs ADD COLUMN max_uses INTEGER DEFAULT 3",
+            "ALTER TABLE tg_sessions ADD COLUMN unlocked_at BIGINT DEFAULT NULL",
         ]
     for sql in migs:
         try:
@@ -535,10 +538,11 @@ def api_tg_webhook():
         elif cdata.startswith('tg_unlock:'):
             chat_id = cdata[10:]
             try:
+                now_ts = int(time.time())
                 with engine.begin() as c:
                     c.execute(
-                        text("INSERT INTO tg_sessions (chat_id, status) VALUES (:cid, 'unlocked') ON CONFLICT (chat_id) DO UPDATE SET status='unlocked'"),
-                        {'cid': chat_id}
+                        text("INSERT INTO tg_sessions (chat_id, status, unlocked_at) VALUES (:cid, 'unlocked', :ts) ON CONFLICT (chat_id) DO UPDATE SET status='unlocked', unlocked_at=:ts"),
+                        {'cid': chat_id, 'ts': now_ts}
                     )
             except Exception as e:
                 print(f'tg_unlock error: {e}')
@@ -573,14 +577,16 @@ def api_tg_webhook():
         if text_msg == '/start':
             # Лимит статусын тексер
             tg_status = None
+            tg_unlocked_at = None
             try:
                 with engine.connect() as c:
                     row_ts = c.execute(
-                        text("SELECT status FROM tg_sessions WHERE chat_id=:cid"),
+                        text("SELECT status, unlocked_at FROM tg_sessions WHERE chat_id=:cid"),
                         {'cid': chat_id}
                     ).fetchone()
                 if row_ts:
                     tg_status = row_ts[0]
+                    tg_unlocked_at = row_ts[1]
             except Exception:
                 pass
 
@@ -602,8 +608,15 @@ def api_tg_webhook():
                 except Exception as e:
                     print(f'start limit message error: {e}')
             elif tg_status == 'unlocked':
+                import datetime
+                start_ts  = tg_unlocked_at or int(time.time())
+                end_ts    = start_ts + 30 * 24 * 3600
+                end_date  = datetime.datetime.utcfromtimestamp(end_ts).strftime('%d.%m.%Y')
+                days_left = max(0, (end_ts - int(time.time())) // 86400)
                 msg = (
-                    '✅ <b>Аккаунтіңіз белсенді!</b>\n\n'
+                    '✅ <b>Сіздің шексіз пайдалану мерзіміңіз белсенді!</b>\n\n'
+                    f'📅 Мерзім: <b>30 күн</b>\n'
+                    f'⏳ Қалған күн: <b>{days_left} күн</b> ({end_date} дейін)\n\n'
                     f'📱 Платформаға кіру:\n{hub_url}?tg={chat_id}\n\n'
                     '🎮 Шексіз ойын жасай аласыз!'
                 )
