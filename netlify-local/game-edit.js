@@ -191,13 +191,103 @@
   paywall.id = 'ge-paywall';
   paywall.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:99999;align-items:center;justify-content:center;';
   paywall.innerHTML = `
-    <div style="background:#0a0c1e;border:1px solid rgba(255,200,100,0.18);border-radius:20px;padding:40px 30px;text-align:center;max-width:320px;width:90%;font-family:'Segoe UI',sans-serif;">
-      <div style="font-size:3.2rem;margin-bottom:14px;">🔒</div>
-      <h2 style="color:#fff;font-size:1.25rem;font-weight:800;margin:0 0 12px;">Тегін нұсқа бітті</h2>
-      <p style="color:rgba(255,255,255,0.5);font-size:0.88rem;line-height:1.7;margin:0 0 20px;">Сіз 3 тегін сілтемені пайдаландыңыз.<br>Жалғастыру үшін бізге хабарласыңыз.</p>
-      <button onclick="document.getElementById('ge-paywall').style.display='none'" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);border-radius:8px;padding:9px 24px;cursor:pointer;font-size:0.82rem;font-family:inherit;">Жабу</button>
+    <div style="background:#0a0c1e;border:1px solid rgba(255,200,100,0.18);border-radius:20px;padding:32px 26px;text-align:center;max-width:360px;width:90%;font-family:'Segoe UI',sans-serif;max-height:92vh;overflow-y:auto;">
+      <div style="font-size:2.8rem;margin-bottom:10px;">🔒</div>
+      <h2 style="color:#fff;font-size:1.15rem;font-weight:800;margin:0 0 6px;">Тегін нұсқа бітті</h2>
+      <p style="color:rgba(255,255,255,0.5);font-size:0.82rem;margin:0 0 18px;line-height:1.6;">3 тегін ойын жасалды. Жалғастыру үшін төлем жасаңыз.</p>
+
+      <div style="background:rgba(255,200,80,0.08);border:1px solid rgba(255,200,80,0.28);border-radius:12px;padding:14px 16px;margin-bottom:16px;text-align:left;">
+        <div style="color:#fbbf24;font-weight:700;font-size:0.72rem;letter-spacing:0.08em;margin-bottom:10px;">💳 KASPI АРҚЫЛЫ АУДАРУ</div>
+        <div style="color:#fff;font-size:1.25rem;font-weight:800;letter-spacing:0.05em;margin-bottom:3px;">📱 8 771 510 4948</div>
+        <div style="color:rgba(255,255,255,0.65);font-size:0.85rem;">👤 Сахибжамал А</div>
+        <div style="color:rgba(255,255,255,0.3);font-size:0.7rem;margin-top:8px;">Kaspi-де іздегенде осы ат шығады — тексеріңіз</div>
+      </div>
+
+      <p style="color:rgba(255,255,255,0.55);font-size:0.8rem;margin:0 0 10px;">Төлеп болған соң чекті (скриншотты) жіберіңіз:</p>
+
+      <label style="display:block;background:#1e3a5f;border:1px solid rgba(59,130,246,0.35);border-radius:10px;padding:11px 16px;cursor:pointer;color:#93c5fd;font-size:0.82rem;font-weight:600;margin-bottom:8px;">
+        📎 Чек суретін жіберу
+        <input type="file" accept="image/*" style="display:none;" id="ge-check-file" onchange="window.__geSendCheck(this)">
+      </label>
+      <div id="ge-check-status" style="font-size:0.76rem;margin-bottom:14px;min-height:16px;color:rgba(255,255,255,0.4);"></div>
+
+      <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:14px;margin-bottom:14px;">
+        <div style="color:rgba(255,255,255,0.35);font-size:0.72rem;margin-bottom:8px;">Кодыңыз болса:</div>
+        <div style="display:flex;gap:8px;">
+          <input id="ge-unlock-code" placeholder="Кодты енгізіңіз" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:9px 12px;color:#fff;font-size:0.82rem;outline:none;font-family:inherit;">
+          <button onclick="window.__geUnlock()" style="background:#22c55e;border:none;color:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:0.82rem;font-weight:700;white-space:nowrap;font-family:inherit;">Растау</button>
+        </div>
+        <div id="ge-unlock-msg" style="font-size:0.74rem;margin-top:6px;min-height:16px;"></div>
+      </div>
+
+      <button onclick="document.getElementById('ge-paywall').style.display='none'" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);border-radius:8px;padding:8px 22px;cursor:pointer;font-size:0.78rem;font-family:inherit;">Жабу</button>
     </div>`;
   document.body.appendChild(paywall);
+
+  window.__geSendCheck = async function(input) {
+    const file = input.files[0];
+    if(!file) return;
+    const status = document.getElementById('ge-check-status');
+    status.style.color = 'rgba(255,255,255,0.4)';
+    status.textContent = '⏳ Жіберілуде...';
+    try {
+      const reader = new FileReader();
+      reader.onload = async e => {
+        try {
+          const res = await fetch(`${API}/api/submit-check`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({screenshot: e.target.result})
+          });
+          const data = await res.json();
+          if(data.ok){
+            status.style.color = '#4ade80';
+            status.textContent = '✅ Чек жіберілді! Растауды күтіңіз.';
+          } else {
+            status.style.color = '#f87171';
+            status.textContent = '❌ Жіберу қатесі. Қайта көріңіз.';
+          }
+        } catch(err){
+          status.style.color = '#f87171';
+          status.textContent = '❌ Қате. Қайта көріңіз.';
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch(e){
+      status.style.color = '#f87171';
+      status.textContent = '❌ Қате. Қайта көріңіз.';
+    }
+  };
+
+  window.__geUnlock = async function() {
+    const code = document.getElementById('ge-unlock-code').value.trim().toUpperCase();
+    if(!code) return;
+    const msg = document.getElementById('ge-unlock-msg');
+    msg.style.color = 'rgba(255,255,255,0.4)';
+    msg.textContent = '⏳ Тексерілуде...';
+    try {
+      const res = await fetch(`${API}/api/unlock`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({code})
+      });
+      const data = await res.json();
+      if(data.ok){
+        localStorage.removeItem('aisha_free_saves');
+        localStorage.removeItem('aisha_limit_notified');
+        localStorage.setItem('aisha_unlocked', '1');
+        document.getElementById('ge-paywall').style.display = 'none';
+        msg.style.color = '#4ade80';
+        msg.textContent = '✅ Шексіз мүмкіндік ашылды!';
+      } else {
+        msg.style.color = '#f87171';
+        msg.textContent = '❌ Код дұрыс емес немесе бұрын пайдаланылған';
+      }
+    } catch(e){
+      msg.style.color = '#f87171';
+      msg.textContent = '❌ Қате. Қайта көріңіз.';
+    }
+  };
 
   // Auto-open panel when page loads with ?edit=1
   window.addEventListener('load', ()=>{ setTimeout(openPanel, 300); });
@@ -917,7 +1007,8 @@
   window.__geSave = async function(){
     // Тегін лимит тексеру
     const savesUsed = parseInt(localStorage.getItem('aisha_free_saves') || '0');
-    if(savesUsed >= FREE_LIMIT){
+    const isUnlocked = localStorage.getItem('aisha_unlocked') === '1';
+    if(savesUsed >= FREE_LIMIT && !isUnlocked){
       // Telegram-ға тек бір рет хабарлама жібер
       if(!localStorage.getItem('aisha_limit_notified')){
         localStorage.setItem('aisha_limit_notified','1');

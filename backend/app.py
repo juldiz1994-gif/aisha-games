@@ -67,6 +67,11 @@ def init_db():
             amount INTEGER DEFAULT 4990,
             created_at BIGINT DEFAULT ({NOW_TS})
         )'''))
+        c.execute(text(f'''CREATE TABLE IF NOT EXISTS unlock_codes (
+            code TEXT PRIMARY KEY,
+            used BOOLEAN DEFAULT FALSE,
+            created_at BIGINT DEFAULT ({NOW_TS})
+        )'''))
 
     # Migrations — add new columns if missing
     if USE_PG:
@@ -280,21 +285,37 @@ def api_save_game():
 
     return jsonify({'success': True, 'id': game_id, 'max_uses': 3})
 
+def _create_unlock_code():
+    code = secrets.token_urlsafe(6).upper().replace('-', '').replace('_', '')[:8]
+    try:
+        with engine.begin() as c:
+            c.execute(text('INSERT INTO unlock_codes (code) VALUES (:code)'), {'code': code})
+    except Exception:
+        code = secrets.token_hex(4).upper()
+        with engine.begin() as c:
+            c.execute(text('INSERT INTO unlock_codes (code) VALUES (:code)'), {'code': code})
+    return code
+
+
 @app.route('/api/limit-hit', methods=['POST'])
 def api_limit_hit():
     cfg       = load_config()
     bot_token = os.environ.get('BOT_TOKEN') or cfg.get('bot_token', '')
     admin_id  = os.environ.get('ADMIN_TG_ID') or str(cfg.get('admin_tg_id', ''))
+    code = _create_unlock_code()
     if bot_token and admin_id:
         try:
             http_req.post(
                 f'https://api.telegram.org/bot{bot_token}/sendMessage',
                 json={
                     'chat_id': admin_id,
+                    'parse_mode': 'HTML',
                     'text': (
-                        '🔔 Жаңа сатып алушы!\n\n'
-                        '👤 Мұғалім 3 тегін сілтемені пайдаланды.\n'
-                        '💳 Байланысып, төлем туралы хабарлаңыз.'
+                        '🔔 <b>Жаңа сатып алушы!</b>\n\n'
+                        '👤 Мұғалім 3 тегін ойын жасады.\n'
+                        '💳 Kaspi: <b>8 771 510 4948</b> (Сахибжамал А)\n\n'
+                        f'✅ Растау коды: <code>{code}</code>\n\n'
+                        'Төлемді тексеріп, осы кодты мұғалімге жіберіңіз.'
                     )
                 },
                 timeout=5
@@ -302,6 +323,57 @@ def api_limit_hit():
         except Exception as e:
             print(f'limit-hit notify error: {e}')
     return jsonify({'ok': True})
+
+
+@app.route('/api/submit-check', methods=['POST'])
+def api_submit_check():
+    data       = request.get_json() or {}
+    screenshot = data.get('screenshot', '')
+    if not screenshot:
+        return jsonify({'ok': False, 'error': 'screenshot жоқ'}), 400
+    cfg       = load_config()
+    bot_token = os.environ.get('BOT_TOKEN') or cfg.get('bot_token', '')
+    admin_id  = os.environ.get('ADMIN_TG_ID') or str(cfg.get('admin_tg_id', ''))
+    if bot_token and admin_id:
+        try:
+            data_part = screenshot.split(',', 1)[-1] if ',' in screenshot else screenshot
+            img_bytes = base64.b64decode(data_part)
+            http_req.post(
+                f'https://api.telegram.org/bot{bot_token}/sendPhoto',
+                data={
+                    'chat_id': admin_id,
+                    'caption': '💳 Мұғалімнен чек келді!\nТөлемді тексеріп, растау кодын жіберіңіз.'
+                },
+                files={'photo': ('check.jpg', io.BytesIO(img_bytes), 'image/jpeg')},
+                timeout=10
+            )
+        except Exception as e:
+            print(f'submit-check error: {e}')
+    return jsonify({'ok': True})
+
+
+@app.route('/api/unlock', methods=['POST'])
+def api_unlock():
+    data = request.get_json() or {}
+    code = data.get('code', '').strip().upper()
+    if not code:
+        return jsonify({'ok': False})
+    try:
+        with engine.connect() as c:
+            row = c.execute(
+                text('SELECT used FROM unlock_codes WHERE code=:code'),
+                {'code': code}
+            ).fetchone()
+        if row and not row[0]:
+            with engine.begin() as c:
+                c.execute(
+                    text('UPDATE unlock_codes SET used=TRUE WHERE code=:code'),
+                    {'code': code}
+                )
+            return jsonify({'ok': True})
+    except Exception as e:
+        print(f'unlock error: {e}')
+    return jsonify({'ok': False})
 
 @app.route('/api/my-games')
 def api_my_games():
