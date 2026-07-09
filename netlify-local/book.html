@@ -319,6 +319,10 @@ body{
 
 @keyframes pulse{0%,100%{opacity:.35}50%{opacity:.8}}
 @keyframes glow{0%,100%{text-shadow:0 0 20px rgba(0,255,65,0.3)}50%{text-shadow:0 0 40px rgba(0,255,65,0.6),0 0 70px rgba(0,255,65,0.3)}}
+
+@media (max-width: 780px) {
+  body { justify-content: flex-start; padding-top: 16px; overflow-y: auto; }
+}
 </style>
 </head>
 <body>
@@ -737,6 +741,18 @@ document.addEventListener('keydown', e=>{
   if(e.key==='ArrowRight'||e.key==='ArrowDown'){ e.preventDefault(); if(!isOpen) openBook(); else fwd(); }
   if(e.key==='ArrowLeft' ||e.key==='ArrowUp'){   e.preventDefault(); bwd(); }
 });
+(function(){
+  function _rescale(){
+    var s = Math.min(1, (window.innerWidth - 16) / 740);
+    var sc = document.querySelector('.scene');
+    sc.style.transform = 'scale('+s.toFixed(4)+')';
+    sc.style.transformOrigin = 'top center';
+    sc.style.marginBottom = s < 1 ? Math.round(-(470*(1-s)))+'px' : '';
+  }
+  _rescale();
+  window.addEventListener('resize', _rescale);
+})();
+
 window.GAME_TYPE  = 'book';
 window.GAME_TITLE = 'Кітап';
 window.getGameConfig  = () => ({ title: '3D Кітап', pages: [] });

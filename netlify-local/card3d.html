@@ -315,6 +315,17 @@
       mouseX = t.clientX;
       mouseY = t.clientY;
     }, { passive: false });
+  (function(){
+    function _rescale(){
+      var sw = (window.innerWidth  - 32) / 340;
+      var sh = (window.innerHeight - 32) / 440;
+      var s  = Math.min(1, sw, sh);
+      document.getElementById('scene').style.transform = s < 1 ? 'scale('+s.toFixed(4)+')' : '';
+    }
+    _rescale();
+    window.addEventListener('resize', _rescale);
+  })();
+
   window.GAME_TYPE  = 'card3d';
   window.GAME_TITLE = '3D Карточка';
 
