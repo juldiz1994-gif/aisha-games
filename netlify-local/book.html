@@ -321,7 +321,8 @@ body{
 @keyframes glow{0%,100%{text-shadow:0 0 20px rgba(0,255,65,0.3)}50%{text-shadow:0 0 40px rgba(0,255,65,0.6),0 0 70px rgba(0,255,65,0.3)}}
 
 @media (max-width: 780px) {
-  body { justify-content: flex-start; padding-top: 16px; overflow-y: auto; }
+  body { align-items: flex-start; justify-content: flex-start; padding-top: 16px; overflow-y: auto; overflow-x: hidden; }
+  .nav { align-self: center; }
 }
 </style>
 </head>
@@ -743,10 +744,19 @@ document.addEventListener('keydown', e=>{
 });
 (function(){
   function _rescale(){
-    var s = Math.min(1, (window.innerWidth - 16) / 740);
     var sc = document.querySelector('.scene');
+    if(window.innerWidth > 780){
+      sc.style.transform = '';
+      sc.style.transformOrigin = '';
+      sc.style.marginLeft = '';
+      sc.style.marginBottom = '';
+      return;
+    }
+    var vw = window.innerWidth;
+    var s = Math.min(1, (vw - 16) / 740);
     sc.style.transform = 'scale('+s.toFixed(4)+')';
-    sc.style.transformOrigin = 'top center';
+    sc.style.transformOrigin = 'top left';
+    sc.style.marginLeft = ((vw - 740*s)/2).toFixed(1)+'px';
     sc.style.marginBottom = s < 1 ? Math.round(-(470*(1-s)))+'px' : '';
   }
   _rescale();
